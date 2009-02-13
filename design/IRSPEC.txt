@@ -1,0 +1,34 @@
+
+Instructions
+-----------------
+Math
+operation( ... , signedness)
+        list of operands and operators, can only operate on registers
+        TODO: have to work out details for sign extensions
+Data
+load( register, address, size)
+store( register, address, size)
+
+Flow Control
+
+branch_true
+branch_false
+
+jump
+call
+ret
+
+Misc
+  syscall
+  halt
+  ...
+  optimization
+  extended info
+  
+operands
+  register_operand
+  memory_operand
+  constant_operand
+  
+  attributes
+    type, size, name
