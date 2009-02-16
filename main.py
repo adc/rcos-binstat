@@ -1,6 +1,6 @@
 import elf
-
 import ir
+import graphs
 
 class Binparser:
   def __init__(self, filename):
@@ -51,8 +51,12 @@ if __name__ == "__main__":
     from mips_translator import MIPS_Translator    
     mips = MIPS_Translator()
     IR_rep = mips.translate(bin)
+
+    for n in IR_rep:
+      print hex(n.address) + ':    ' + repr(n)
+    
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
-    IR_rep = x86.translate(bin)
-
+    IR_rep = x86.translate(bin)    
+    graphs.make_flow_graph(IR_rep)

@@ -1,3 +1,5 @@
+# TODO: 64-bit mips instructions
+
 import ir
 import struct
 
@@ -19,7 +21,7 @@ class Translator:
 class MIPS_Translator(Translator):
   def __init__(self):
     Translator.__init__(self)
-    self.registers = [\
+    self.registers = [
         ir.register("$0", "$zero"),
         ir.register("$1", "$at"),
         ir.register("$2", "$v0"),
@@ -48,15 +50,19 @@ class MIPS_Translator(Translator):
         ir.register("$25", "$t9"),
         ir.register("$26", "$k0"),
         ir.register("$27", "$k1"),
-        ir.register("$28", "$gp"),
+        ir.register("$28", "$gp", size=8),
         ir.register("$29", "$sp"),
         ir.register("$30", "$fp"),
         ir.register("$31", "$ra"), 
-        ir.register("$32", "$pc")]
+        ir.register("$32", "$pc")
+    ]
+
     for i in range(32):
       self.registers.append(ir.register("$f%d"%i))
     self.registers.append(ir.register("FP_COND"))
     self.registers.append(ir.register("HILO",size=8))
+    self.registers.append(ir.register("FIR"))
+    self.registers.append(ir.register("FSR"))
       
   def mem_info():
     pass
@@ -77,6 +83,9 @@ class MIPS_Translator(Translator):
           break
       if not R:
         raise Exception("DR: Unknown register: $%d"%reg)
+
+        
+    return ir.register_operand(R)
 
   def get_r_type(self, opcode):
     function = opcode & 0x3f
@@ -99,8 +108,8 @@ class MIPS_Translator(Translator):
       8   : ("jr PC = rs", 
           [ir.jump(DR(rs))]),
       9   : ("jalr rd = return_addr, PC = rs ",
-          [ir.operation(ir.operation(DR(rd),'=',DR("$pc"),"+",4)),
-           ir.call(rs)]),
+          [ir.operation(DR(rd),'=',DR("$pc"),"+",4),
+           ir.call(DR(rs))]),
       12  : "syscall",
       13  : "break",
       16  : ("mfhi", 
@@ -142,17 +151,24 @@ class MIPS_Translator(Translator):
           [ir.operation(DR(rd),'=',DR(rs), "<", DR(rt))]),
       43  : ("sltu",
           [ir.operation(DR(rd),'=',DR(rs), "<", DR(rt), signed=0)]),
-      45  : "daddu",
-      47  : "dsubu",
+      45  : ("daddu",
+          [ir.operation(DR(rd),'=',DR(rs), "+", DR(rt), signed=0)]),
+      47  : ("dsubu",
+          [ir.operation(DR(rd),'=',DR(rs), "-", DR(rt), signed=0)]),      
       52  : "teq",
       56  : "dssl",
       59  : "dsra",
       60  : "dsll32",
       63  : "dsra32"
     }
-    try:
-      return instructions[function]
-    except:
+    if function in instructions:
+      instr = instructions[function]
+      if "jr" in instr[0]:
+        if instr[1][0].dest == DR("$ra"):
+          #this instruction is considered a 'ret'
+          instr[1][0] = ir.ret(DR("$ra"))
+      return instr
+    else:
       raise Exception("unknown function code for R types: %d"%function)
   """
   Instruction	 Opcode	 Notes
@@ -165,38 +181,70 @@ class MIPS_Translator(Translator):
   xori	 rt, rs, immediate	 001110"""      
   def get_i_type(self, opcode):
     OP = opcode >> 26
+    offset = opcode & 0xffff
+    rs = (opcode>>21) & 0x1f
+    rt = (opcode>>16) & 0x1f
+    rd = (opcode>>11) & 0x1f
+
+    DR = self.decode_register
+    
     instructions = {
-      1   :   "bgez",
-      4   :   "beq",
-      5   :   "bne",
-      6   :   "blez",
-      7   :   "bgtz",
-      8   :   "addi",
-      9   :   "addiu",
-      10  :   "slti",
-      11  :   "sltiu",
-      12  :   "andi",
-      13  :   "ori",
-      14  :   "xori",
-      15  :   "lui",
-      20  :   "beqzl",
-      21  :   "bnezl",
-      22  :   "blezl",
-      23  :   "bgtzl",
-      25  :   "daddiu",
+      4   :   ("beq",
+              [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      5   :   ("bne",
+              [ir.operation(DR(rs),'!=',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      6   :   ("blez",
+              [ir.operation(DR(rs),'<=',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      7   :   ("bgtz",
+              [ir.operation(DR(rs),'>',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      8   :   ("addi", #rt = rs + immediate
+              [ir.operation(DR(rt),'=',DR(rs),'+',ir.constant_operand(offset,size=2))]),
+      9   :   ("addiu",
+              [ir.operation(DR(rt),'=',DR(rs),'+',ir.constant_operand(offset,size=2))]),
+      10  :   ("slti",
+              [ir.operation(DR(rt),'=',DR(rs),'<',ir.constant_operand(offset,size=2))]),
+      11  :   ("sltiu",
+              [ir.operation(DR(rt),'=',DR(rs),'<',ir.constant_operand(offset,size=2))]),
+      12  :   ("andi",
+              [ir.operation(DR(rt),'=',DR(rs),'&',ir.constant_operand(offset,size=2))]),
+      13  :   ("ori",
+              [ir.operation(DR(rt),'=',DR(rs),'|',ir.constant_operand(offset,size=2))]),
+      14  :   ("xori",
+              [ir.operation(DR(rd),"=",DR(rs),"^",ir.constant_operand(offset,size=2))]),
+      15  :   ("lui",
+              [ir.operation(DR(rt),'=',ir.constant_operand(offset,size=2),'<<',16)]),
+      20  :   ("beqzl",
+              [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      21  :   ("bnezl",
+              [ir.operation(DR(rs),'!=',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      22  :   ("blezl",
+              [ir.operation(DR(rs),'<=',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      23  :   ("bgtzl",
+              [ir.operation(DR(rs),'>',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+      25  :   ("daddiu", #unsigned is a misnomer
+              [ir.operation(DR(rt),'=',DR(rs),'+',ir.constant_operand(offset,size=2,signed=1))]),
       26  :   "ldl",
       27  :   "ldr",
-      32  :   "lb",
-      33  :   "ll",
+      32  :   ("lb",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=1)]),
+      33  :   ("ll", #atmoic load words
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),      
       34  :   "lwl",
-      35  :   "lw",
-      36  :   "lbu",
-      37  :   "lhu",
-      38  :   "lwr",
-      39  :   "lw",
-      40  :   "sb",
-      41  :   "sh",
-      43  :   "sw",
+      35  :   ("lw",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),
+      36  :   ("lbu",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=1,signed=0)]),
+      37  :   ("lhu",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=2,signed=0)]),
+      38  :   "lwr", #todo
+      39  :   ("lw",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),      
+      40  :   ("sb",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),size=1)]),
+      41  :   ("sh",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),size=2)]),
+      43  :   ("sw",
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),
       44  :   "sdl",
       45  :   "sdr",
       49  :   "lwc1",
@@ -209,18 +257,41 @@ class MIPS_Translator(Translator):
     }
     
     try:
-      return instructions[OP]
-    except:
+      
+      if OP == 1:
+        code = rt
+        
+        if code in [0,2]: #BLTZ, BLTZL
+          instr = ("bltz",[ir.operation(DR(rs),'<',ir.constant_operand(0)), 
+                  ir.branch_true(ir.constant_operand((offset<<2) + 4))])
+        elif code in [1,3]: #BGEZ, BGEZL
+          instr = ("bltz",[ir.operation(DR(rs),'>=',ir.constant_operand(0)), 
+                  ir.branch_true(ir.constant_operand((offset<<2) + 4))])
+        elif code in [16,18]: #BLTZAL, BLTZALL
+          instr = ("bltzal",[ir.operation(DR(rs),'<',ir.constant_operand(0)),
+                  ir.operation(DR("$ra"),'=',DR("$pc"),'+',4),
+                  ir.call(ir.constant_operand((offset<<2) + 4))])
+        elif code in [17,19]: #BGEZAL,BGEZALL
+          instr = ("bgezal",[ir.operation(DR(rs),'>=',ir.constant_operand(0)),
+                  ir.operation(DR("$ra"),'=',DR("$pc"),'+',4),
+                  ir.call(ir.constant_operand((offset<<2) + 4))])
+      else:
+        instr = instructions[OP]
+          
+      return instr
+    except KeyError:
       raise Exception("unknown op code for I types: %d"%OP)
 
   def get_j_type(self, opcode):
     OP = opcode >> 26
     target = opcode & 0x3ffffff
+    DR = self.decode_register
     
     if OP == 2:
-      return "j"
+      return ("j", [ir.jump(ir.constant_operand(target))])
     elif OP == 3:
-      return "jal"
+      return ("jal", [ir.operation(DR("$ra"),'=',DR('$pc'),'+',4),
+                    ir.jump(ir.constant_operand(target))])
 
   def get_coproc_type(self, opcode):
     return "unsupported"
@@ -230,24 +301,35 @@ class MIPS_Translator(Translator):
     
     OP = opcode >> 26
 
+    ret = None
+    
     if OP == 0:
-      self.get_r_type(opcode)
+      ret = self.get_r_type(opcode)
     elif OP in [2,3]:
-      self.get_j_type(opcode)
+      ret = self.get_j_type(opcode)
     elif OP in [16,17,18,19]:
-      self.get_coproc_type(opcode)
+      ret = self.get_coproc_type(opcode)
     else:
-      self.get_i_type(opcode)
+      ret = self.get_i_type(opcode)
+    
+    if type(ret) != str:
+      for n in ret[1]:
+        n.address = base_addr
+    return ret
 
   def translate(self, target):
+    output = []
     for seg in target.memory.segments:
       if seg.code:
         x = target.entry_points[0]
-        print hex(x)
-        while x < seg.end:
-          print hex(x)+">>>"
-          self.disassemble(target.memory[x:x+4], x)
-          x += 4
-        
 
-        
+        while x < seg.end:
+          r = self.disassemble(target.memory[x:x+4], x)
+          if type(r) == str:
+            z = [ir.unhandled_instruction(r)]
+            z[0].address = x
+          else:
+            z  = r[1]
+          output += z
+          x += 4
+    return output        
