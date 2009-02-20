@@ -1,5 +1,40 @@
 import ir
 
+class CodeBlock:
+  def __init__(self, code):
+    self.code = code
+    self.start = code[0].address
+    self.end = code[-1].address
+
+    self.next = 0
+    self.branch = 0
+    self.parents = []
+    
+  def split(self, address):
+    if address <= self.start or address > self.end:
+      return None
+    
+    top = []
+    bottom = []
+    switch = 0
+    for x in self.code:
+      if switch:
+        bottom.append(x)
+      else:
+        if x.address >= address:
+          switch = 1
+          bottom.append(x)
+        else:
+          top.append(x)
+    
+    self.code = top
+    self.end = self.code[-1].address
+    
+    return CodeBlock(bottom)
+
+def CBcmp(a,b):
+      return a.start - b.start
+
 def is_stack_sub(x):
   #look for stack pointer
   if len(x.ops) == 5:
@@ -37,9 +72,6 @@ def linear_sweep_split_functions(code):
     elif x.type == "operation":
       if is_stack_sub(x):
         func_start_addr = x.address
-#    elif x.type == "ret":
-#      print "func end?\n"+"-"*10
-      
     
     if prev != func_start_addr:
       functions[current_start] = current_function
@@ -57,25 +89,70 @@ def dump_code(func):
 
   print "\n"
 
-def graph_function(code):
+def make_blocks(code):
   #split up code into blocks based on branches
   
-  #sweep 1, find local branch dests
-  print hex(code[0].address), '-', hex(code[-1].address)
-  for instr in code:
-    print hex(instr.address),
-    if instr.type == "branch_true":
-      print instr, hex(instr.dest.value + instr.address)
-    else:
-      print "...",instr
+  blocks = [CodeBlock(code)]
   
+  #sweep 1, find local branch dests and split the blocks
+  for instr in code:
+    if instr.type == "branch_true":
+      dest = instr.dest.value + instr.address
+      for i in range(0, len(blocks)):
+        #split the destination 
+        if blocks[i].start < dest and blocks[i].end >= dest:
+          newblock = blocks[i].split(dest)
+          if newblock:
+            blocks.insert(i, newblock)
+          else:
+            raise Exception("FAILED TO SPLIT @ %x"%instr.address)
+      #split the current block
+      for i in range(0, len(blocks)):
+        #split the destination 
+        if blocks[i].start < instr.address and blocks[i].end >= instr.address:
+          newblock = blocks[i].split(instr.address)
+          if newblock:
+            blocks.insert(i, newblock)
+          else:
+            raise Exception("FAILED TO SPLIT @ %x"%instr.address)
+
+  #sweep 2, connect all the dots
+  
+  for i in range(0, len(blocks)-1):
+    blocks[i].next = blocks[i].start
+    instr = blocks[i].code[-1]
+    dest = 0
+    if instr.type == "branch_true":
+      dest = instr.dest.value + instr.address
+      blocks[i].branch = dest
+    
+    if dest:
+      for j in range(0, len(blocks)) :
+        if blocks[j].start == dest:
+          blocks[j].parents.append(blocks[i].start)
+          break
+    
+  blocks.sort(CBcmp)
+  
+  return blocks
+
+def graph_function(code):
+  blocks = make_blocks(code)
+
+  for b in blocks:
+    print "********", hex(b.start), '-', hex(b.end), "********"
+    print "parents: ",`[hex(x) for x in b.parents]`
+    print "next: %x   branch: %x"%(b.next, b.branch)
+    for instr in b.code:
+      print hex(instr.address), instr
+    print ""
+  #sweep 2, draw connections
 
 def make_flow_graph(code):
   f = linear_sweep_split_functions(code)
   for func in f:
     graph_function(f[0x10001944])
     break
-            
 
 """
   for n in code:
@@ -89,5 +166,4 @@ def make_flow_graph(code):
       print "0x%x:    "%n.address,n
     elif isinstance(n, ir.ret):
       print "0x%x:    "%n.address,n    
-"""  
-    
+"""
