@@ -80,6 +80,8 @@ def linear_sweep_split_functions(code):
     else:
       current_function.append(x)
 
+  if current_function:
+    functions[current_start] = current_function
   return functions
 
 def dump_code(func):
@@ -117,9 +119,9 @@ def make_blocks(code):
             raise Exception("FAILED TO SPLIT @ %x"%instr.address)
 
   #sweep 2, connect all the dots
-  
+  blocks.sort(CBcmp)
   for i in range(0, len(blocks)-1):
-    blocks[i].next = blocks[i].start
+    blocks[i].next = blocks[i+1].start
     instr = blocks[i].code[-1]
     dest = 0
     if instr.type == "branch_true":
@@ -131,8 +133,6 @@ def make_blocks(code):
         if blocks[j].start == dest:
           blocks[j].parents.append(blocks[i].start)
           break
-    
-  blocks.sort(CBcmp)
   
   return blocks
 
@@ -141,7 +141,7 @@ def graph_function(code):
 
   for b in blocks:
     print "********", hex(b.start), '-', hex(b.end), "********"
-    print "parents: ",`[hex(x) for x in b.parents]`
+    print "parents: ",[hex(x) for x in b.parents]
     print "next: %x   branch: %x"%(b.next, b.branch)
     for instr in b.code:
       print hex(instr.address), instr
@@ -151,8 +151,7 @@ def graph_function(code):
 def make_flow_graph(code):
   f = linear_sweep_split_functions(code)
   for func in f:
-    graph_function(f[0x10001944])
-    break
+    graph_function(f[func])
 
 """
   for n in code:
