@@ -64,10 +64,28 @@ class memory:
     raise IndexError("memory address out of range")
 
 
+class operand:
+  def __init__(self, t):
+    self.type = t
+    self.size = 0
+
+class alias_name:
+  def __init__(self, names):
+    self.names = names
+
+  def __cmp__(a, b):
+    for x in a.names:
+      if x == b:
+        return 0
+    return 1
+
+  def __repr__(self):
+    return self.names[0]
+
 class register:
   def __init__(self, name, *aliases, **var):
     self.name = name
-    self.aliases = list(aliases)
+    self.aliases = [name]+list(aliases)
     self.size = 4
     self.callee_save = 0
 
@@ -75,43 +93,51 @@ class register:
       self.size = var['size']
     if 'callee_save' in var:
       self.callee_save = 1
-    
-
-class operand:
-  def __init__(self):
-    self.type = ""
-    self.size = 0
-
+        
 class register_operand(operand):
   def __init__(self, register):
-    operand.__init__(self)
+    operand.__init__(self,"register")
     self.register = register
-    self.register_name = register.name
+    self.register_name = alias_name(register.aliases)
     self.size = register.size
   
   def __repr__(self):
-    return self.register_name
+    return repr(self.register_name)
+  
+  def __cmp__(a,b):
+    if type(b) == type(a):
+      if a.register == b.register:
+        return 0
+    return 1
 
 class mem_operand(operand):
   def __init__(self, address):
-    operand.__init__(self)
+    operand.__init__(self, "memory")
     self.relative = 0
     self.address = address
     self.segment = 0
 
 class constant_operand(operand):
   def __init__(self, value, size=4, signed=1):
-    operand.__init__(self)
-    self.value = value
+    operand.__init__(self, "constant")
     self.size = size
     self.signed = signed
-    #todo: sign extension stuff?
+    
+    #todo: exceptions on overflows?
+
+    #make sure it fits inside of 'size' bytes
+    if signed:
+      if value < 0:
+        value = -(value & (256**size)/2)
+      elif value > (256**size-1)/2:
+        value = (value % 256**size) - 256**size
+    else:
+      value = value & (256**size-1)
+      
+    self.value = value
 
   def __repr__(self):
-    if self.signed and self.value > 32767 and self.value < 65536:
-      return "-%d"%(65536-self.value)
-    else:
-      return str(self.value)
+    return str(self.value)
 
 INST_MATH = 0
 INST_DATA = 1
@@ -119,38 +145,39 @@ INST_FLOW = 2
 INST_MISC = 3
 
 class instruction:
-  def __init__(self):
+  def __init__(self, t):
     self.size = 0
-    self.type = ""
+    self.type = t
     self.address = 0
     self.operands = []
     self.result = [] #changes made to state by instructions, these are described by math
 
-class operation:
+class operation(instruction):
   def __init__(self,*ops,**vals):
+    instruction.__init__(self, "operation")
     signed = 1
     if 'signed' in vals:
       signed = vals['signed']
-    self.operations = ops
+    self.ops = ops
     #blah blah, figure out how to deal with signedness
     #deal w/ known operators here
   
   def __repr__(self):
-    return repr(self.operations)
+    return repr(self.ops)
 
 
 ###### misc instructions
 
 class unhandled_instruction(instruction):
   def __init__(self, data):
-    instruction.__init__(self)
+    instruction.__init__(self, "unhandled")
     self.value = data
   def __repr__(self):
     return "UNHANDLED-> %s"%self.value
 
 class native_instruction(instruction):
   def __init__(self, native):
-    instruction.__init__(self)
+    instruction.__init__(self, "native")
     self.value = native
 
   
@@ -160,7 +187,7 @@ class native_instruction(instruction):
 #moves register to memory and back
 class load(instruction):
   def __init__(self, dest_op, src_op=None, size=4, signed=1):
-    instruction.__init__(self)
+    instruction.__init__(self, "load")
     self.signed = signed
     self.size = size
     self.dest = dest_op
@@ -171,7 +198,7 @@ class load(instruction):
     
 class store(instruction):
   def __init__(self, dest_op, src_op=None, size=4, signed=1):
-    instruction.__init__(self)
+    instruction.__init__(self, "store")
     self.signed = signed
     self.size = size
     self.dest = dest_op
@@ -181,16 +208,23 @@ class store(instruction):
     return "STORE %s <- %s"%(self.dest,self.src)
 
     
-###### flow instructions
+###### flow instructions and abstractions
 class jump(instruction):
   def __init__(self, op):
     #destination = op
-    instruction.__init__(self)
+    instruction.__init__(self, "jump")
     self.dest = op
+  
+  def __repr__(self):
+    if isinstance(self.dest, constant_operand):
+      return "JUMP loc_%x"%self.dest.value
+    else:
+      return "JUMP %s"%repr(self.dest)
+      
     
 class branch_true(instruction):
   def __init__(self, op, relative=1):
-    instruction.__init__(self)
+    instruction.__init__(self, "branch_true")
     self.relative = relative
     self.dest = op
   
@@ -199,18 +233,18 @@ class branch_true(instruction):
       return "BRANCH loc_"+hex(int(repr(self.dest))+int(repr(self.address)))
     else:
       return "BRANCH loc_"+repr(self.dest)
-    
-class branch_false(instruction):
-  def __init__(self,  op):
-    instruction.__init__(self)
 
 #######function abstractions
 #build an activation record
 class call(instruction):
   def __init__(self, op, relative=1):
-    instruction.__init__(self)
-    self.relative = relative
+    instruction.__init__(self, "call")
     self.dest = op
+    
+    if isinstance(op, constant_operand):
+      self.relative = relative
+    else:
+      self.relative = 0
 
   def __repr__(self):
     if isinstance(self.dest, constant_operand):
@@ -219,30 +253,49 @@ class call(instruction):
       else:
         return "CALL loc_"+repr(self.dest)
     else:
-      return "CALLR %s"%self.dest
-      
-    
+      return "CALL %s"%self.dest
+
+class library_function(operand):
+  def __init__(self, address, name):
+    operand.__init__(self, "function")
+    self.address = address
+    self.name = name
+    #todo return value and such
+  
 #collapse an activation record
 class ret(instruction):
   def __init__(self, op):
-    instruction.__init__(self)
+    instruction.__init__(self, "ret")
     self.dest = op
+
+  def __repr__(self):
+    return "RET"
 ##########################
 #heap abstractions
-#stack abstractions
 
 class allocate_heap(instruction):
   def __init__(self, size):
-    instruction.__init__(self)
+    instruction.__init__(self, "alloc_heap")
 
 class free_heap(instruction):
   def __init__(self, size):
-    instruction.__init__(self)
+    instruction.__init__(self, "free_heap")
 
+#stack abstractions
 class allocate_stack(instruction):
   def __init__(self, size):
-    instruction.__init__(self)
+    instruction.__init__(self, "alloc_stack")
 
 class collapse_stack(instruction):
   def __init__(self, size):
-    instruction.__init__(self)
+    instruction.__init__(self, "free_stack")
+
+class push(instruction):
+  def __init__(self, op):
+    instruction.__init__(self, "push")
+    self.src = op
+
+class pop(instruction):
+  def __init__(self, op):
+    instruction.__init__(self, "pop")
+    self.dest = op

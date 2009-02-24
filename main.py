@@ -42,21 +42,23 @@ class Binparser:
       return []
 
 
+
 if __name__ == "__main__":
   import sys
   fn = sys.argv[1]
   bin = Binparser(fn)
 
   if bin.architecture == "MIPS":
-    from mips_translator import MIPS_Translator    
+    from mips_translator import MIPS_Translator
     mips = MIPS_Translator()
     IR_rep = mips.translate(bin)
 
-    for n in IR_rep:
-      print hex(n.address) + ':    ' + repr(n)
+    #try to get plt out of bin
+    #elf.mips_resolve_symbols(bin)
     
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
     IR_rep = x86.translate(bin)    
-    graphs.make_flow_graph(IR_rep)
+
+  graphs.make_flow_graph(IR_rep)

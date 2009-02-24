@@ -51,7 +51,7 @@ class MIPS_Translator(Translator):
         ir.register("$26", "$k0"),
         ir.register("$27", "$k1"),
         ir.register("$28", "$gp", size=8),
-        ir.register("$29", "$sp"),
+        ir.register("$29", "$sp", "stack"),
         ir.register("$30", "$fp"),
         ir.register("$31", "$ra"), 
         ir.register("$32", "$pc")
@@ -108,7 +108,7 @@ class MIPS_Translator(Translator):
       8   : ("jr PC = rs", 
           [ir.jump(DR(rs))]),
       9   : ("jalr rd = return_addr, PC = rs ",
-          [ir.operation(DR(rd),'=',DR("$pc"),"+",4),
+          [ir.operation(DR(rd),'=',DR("$pc"),"+",ir.constant_operand(4)),
            ir.call(DR(rs))]),
       12  : "syscall",
       13  : "break",
@@ -172,11 +172,6 @@ class MIPS_Translator(Translator):
       raise Exception("unknown function code for R types: %d"%function)
   """
   Instruction	 Opcode	 Notes
-  bgez	 rs, label        	 000001	 rt = 00001
-  bgtz	 rs, label        	 000111	 rt = 00000
-  blez	 rs, label        	 000110	 rt = 00000
-  bltz	 rs, label        	 000001	 rt = 00000
-
   swc1	 rt, immediate(rs)	 111001	
   xori	 rt, rs, immediate	 001110"""      
   def get_i_type(self, opcode):
@@ -212,7 +207,7 @@ class MIPS_Translator(Translator):
       14  :   ("xori",
               [ir.operation(DR(rd),"=",DR(rs),"^",ir.constant_operand(offset,size=2))]),
       15  :   ("lui",
-              [ir.operation(DR(rt),'=',ir.constant_operand(offset,size=2),'<<',16)]),
+              [ir.operation(DR(rt),'=',ir.constant_operand(offset,size=2),'<<',ir.constant_operand(16))]),
       20  :   ("beqzl",
               [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
       21  :   ("bnezl",
@@ -249,10 +244,12 @@ class MIPS_Translator(Translator):
       45  :   "sdr",
       49  :   "lwc1",
       53  :   "ldc1",
-      55  :   "ld",
+      55  :   ("ld",
+            [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),
       57  :   "swc1",
       61  :   "sdc1",
-      63  :   "sd",
+      63  :   ("sd",
+            [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))])
       
     }
     
@@ -269,11 +266,11 @@ class MIPS_Translator(Translator):
                   ir.branch_true(ir.constant_operand((offset<<2) + 4))])
         elif code in [16,18]: #BLTZAL, BLTZALL
           instr = ("bltzal",[ir.operation(DR(rs),'<',ir.constant_operand(0)),
-                  ir.operation(DR("$ra"),'=',DR("$pc"),'+',4),
+                  ir.operation(DR("$ra"),'=',DR("$pc"),'+',ir.constant_operand(4)),
                   ir.call(ir.constant_operand((offset<<2) + 4))])
         elif code in [17,19]: #BGEZAL,BGEZALL
           instr = ("bgezal",[ir.operation(DR(rs),'>=',ir.constant_operand(0)),
-                  ir.operation(DR("$ra"),'=',DR("$pc"),'+',4),
+                  ir.operation(DR("$ra"),'=',DR("$pc"),'+',ir.constant_operand(4)),
                   ir.call(ir.constant_operand((offset<<2) + 4))])
       else:
         instr = instructions[OP]
@@ -282,17 +279,16 @@ class MIPS_Translator(Translator):
     except KeyError:
       raise Exception("unknown op code for I types: %d"%OP)
 
-  def get_j_type(self, opcode):
+  def get_j_type(self, opcode, address):
     OP = opcode >> 26
     target = opcode & 0x3ffffff
     DR = self.decode_register
     
     if OP == 2:
-      return ("j", [ir.jump(ir.constant_operand(target))])
+      return ("j", [ir.jump(ir.constant_operand(((target<<2)&0xfffffff) + (address&0xf0000000)))])
     elif OP == 3:
-      return ("jal", [ir.operation(DR("$ra"),'=',DR('$pc'),'+',4),
-                    ir.jump(ir.constant_operand(target))])
-
+      return ("jal", [ir.operation(DR("$ra"),'=',DR('$pc'),'+',ir.constant_operand(4)),
+                    ir.call(ir.constant_operand(((target<<2)&0xfffffff) + (address&0xf0000000)))])
   def get_coproc_type(self, opcode):
     return "unsupported"
   
@@ -306,7 +302,7 @@ class MIPS_Translator(Translator):
     if OP == 0:
       ret = self.get_r_type(opcode)
     elif OP in [2,3]:
-      ret = self.get_j_type(opcode)
+      ret = self.get_j_type(opcode, base_addr)
     elif OP in [16,17,18,19]:
       ret = self.get_coproc_type(opcode)
     else:
@@ -319,17 +315,49 @@ class MIPS_Translator(Translator):
 
   def translate(self, target):
     output = []
+    
     for seg in target.memory.segments:
       if seg.code:
-        x = target.entry_points[0]
-
-        while x < seg.end:
-          r = self.disassemble(target.memory[x:x+4], x)
-          if type(r) == str:
-            z = [ir.unhandled_instruction(r)]
-            z[0].address = x
+        addr = target.entry_points[0]
+        
+        FIXDELAY = 0
+        branchQ  = []
+        
+        while addr < seg.end:
+          
+          IR = self.disassemble(target.memory[addr:addr+4], addr)
+          if type(IR) == str:
+            instrs = [ir.unhandled_instruction(IR)]
+            instrs[0].address = addr
           else:
-            z  = r[1]
-          output += z
-          x += 4
-    return output        
+            instrs  = IR[1]
+                    
+          added = 0
+          #reordering the delay slot is kind of like the chicken and egg problem
+          if FIXDELAY:
+            FIXDELAY = 0
+            added = 1
+            #XXX hack alert, flip the addresses also
+            a = instrs[0].address
+            b = branchQ[0].address
+            for n in instrs:
+              n.address = b
+            for n in branchQ:
+              n.address = a
+            output += instrs
+            output += branchQ
+
+          #MIPS requires delay slot re-ordering for branches
+          for n in instrs:
+            if n.type in ["jump","call","ret","branch_true"]:
+              #wait until next time around to add the branch
+              FIXDELAY = 1
+              branchQ = instrs
+              break
+          
+          if not FIXDELAY and not added:
+            output += instrs
+          
+          addr += 4
+
+    return output 

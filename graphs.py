@@ -14,21 +14,42 @@ class CodeBlock:
     if address <= self.start or address > self.end:
       return None
     
-    top = []
-    bottom = []
-    switch = 0
-    for x in self.code:
-      if switch:
-        bottom.append(x)
-      else:
-        if x.address >= address:
-          switch = 1
-          bottom.append(x)
-        else:
-          top.append(x)
     
+    if len(self.code) == 1:
+      raise Exception("trying to split sz =1")
+
+    #print "Splitting block %x-%x at %x"%(self.start, self.end, address)
+    #    print hex(address), hex(self.start), hex(self.end)
+    #    for n in self.code:
+    #      print hex(n.address), n
+    
+    #find the split point
+    #XXX Two design problems exist with splitting on address
+    # 1) Delay slots cause addresses to come in non-linear order
+    # 2) Split-part instructions at the same address need to be kept together
+    
+    #find the split point based on the above issues
+    i = 1
+    while i < len(self.code) and self.code[-i].address != address: #find hit backwards, this should fix delay
+      i += 1
+
+    if i == len(self.code):
+      return
+
+    #keep multipart instructions together
+    j = self.code[-i].address    
+    while (i+1) < len(self.code) and self.code[-(i+1)].address == j:
+      i += 1
+
+    
+    top = self.code[:-i]
+    bottom = self.code[-i:]
+      
+    
+    #print "Old block becomes %x-%x"%(top[0].address, top[-1].address)
+    #print "New block becomes %x-%x"%(bottom[0].address, bottom[-1].address)
     self.code = top
-    self.end = self.code[-1].address
+    self.end = top[-1].address
     
     return CodeBlock(bottom)
 
@@ -85,8 +106,8 @@ def linear_sweep_split_functions(code):
   return functions
 
 def dump_code(func):
-  print "@@@@@\t\t"+hex(func),"  @@@"
-  for instr in f[func]:
+  print "@@@@@\t\t"+hex(func[0].address),"  @@@"
+  for instr in func:
     print "0x%x >>>   "%instr.address,instr
 
   print "\n"
@@ -97,26 +118,41 @@ def make_blocks(code):
   blocks = [CodeBlock(code)]
   
   #sweep 1, find local branch dests and split the blocks
+  SPLITNEXT = 0
   for instr in code:
-    if instr.type == "branch_true":
-      dest = instr.dest.value + instr.address
+    
+    if SPLITNEXT:
+      SPLITNEXT = 0
+
+      dest = instr.address
       for i in range(0, len(blocks)):
         #split the destination 
         if blocks[i].start < dest and blocks[i].end >= dest:
           newblock = blocks[i].split(dest)
           if newblock:
             blocks.insert(i, newblock)
+            break
           else:
-            raise Exception("FAILED TO SPLIT @ %x"%instr.address)
-      #split the current block
+            #there is a case with delay slots where an address
+            # can go missing and enter another slot
+            #should not trigger if blocks are inserted in order
+            raise Exception("FAILED TO SPLIT @ %x"%dest)
+      
+    
+    if instr.type == "branch_true":
+      dest = instr.dest.value + instr.address
       for i in range(0, len(blocks)):
         #split the destination 
-        if blocks[i].start < instr.address and blocks[i].end >= instr.address:
-          newblock = blocks[i].split(instr.address)
+        if blocks[i].start < dest and blocks[i].end >= dest:
+          #print "SPLITTING %x-%x @ %x"%(blocks[i].start, blocks[i].end, dest)
+          newblock = blocks[i].split(dest)
           if newblock:
             blocks.insert(i, newblock)
+            break            
           else:
-            raise Exception("FAILED TO SPLIT @ %x"%instr.address)
+            raise Exception("FAILED TO SPLIT @ %x"%dest)
+      #split after the current block      
+      SPLITNEXT = 1
 
   #sweep 2, connect all the dots
   blocks.sort(CBcmp)
@@ -138,7 +174,18 @@ def make_blocks(code):
 
 def graph_function(code):
   blocks = make_blocks(code)
-
+  
+  o = "digraph function_0x%x {\n"%(code[0].address)  
+  for b in blocks:
+    c = "\n".join(["0x%x: %s"%(instr.address,repr(instr)) for instr in b.code])
+    o += "    block_%s [shape=box align=left label=%r];\n"%(hex(b.start), c)
+    if b.next:
+      o += "    block_%s -> block_0x%x;\n"%(hex(b.start), b.next)
+    if b.branch:
+      o += "    block_%s -> block_0x%x;\n"%(hex(b.start), b.branch)
+  o += "}\n"
+  open("graphs/%x.dot"%code[0].address,'w').write(o)
+  return 
   for b in blocks:
     print "********", hex(b.start), '-', hex(b.end), "********"
     print "parents: ",[hex(x) for x in b.parents]

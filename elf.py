@@ -176,7 +176,7 @@ EM_MIPS_RS3_LE = 10
 #symbol structures
 class Elf32Dyn:
   def __init__(self, data, endianness="<"):
-    self.d_tag, self.d_val = struct.unpack(endianness+"<LL",data)
+    self.d_tag, self.d_val = struct.unpack(endianness+"LL",data)
     self.d_ptr = self.d_val
 class Elf32Rel:
   def __init__(self, data, endianness="<"):
@@ -187,6 +187,7 @@ class Elf32Rela:
     
 class Elf32Sym:
   def __init__(self, data, endianness="<"):
+    #print `data`
     self.st_name, self.st_value, self.st_size, self.st_info, self.st_other,\
     self.st_shndx = struct.unpack(endianness+"LLLBBH",data)
 
@@ -350,3 +351,52 @@ class Elf:
 
       open(filename, "wb").write( self.data )
 
+def pull_ascii(data, offset):
+  o = ""
+  while offset in data and data[offset] != "\x00":
+    o += data[offset]
+    offset += 1
+  return o
+###TODO: does mips have a jmprel or equiv? for sstrip'd binaries
+def mips_resolve_symbols(bin):
+  addr = 0
+  for phdr in bin.binformat.Phdrs:
+    if phdr.type == PT_DYNAMIC:
+      addr = phdr.vaddr
+      break
+
+  strsz = None
+  strtab = None
+  symtab = None
+  dthash = None
+  Edyn = Elf32Dyn(bin.memory[addr:addr+8], bin.binformat.endianness)
+  while Edyn.d_tag != DT_NULL:
+    print hex(addr),'>>>>=    ',hex(Edyn.d_tag), hex(Edyn.d_val)
+    if Edyn.d_tag == DT_STRTAB:
+      strtab = Edyn.d_val
+      print "STRTAB"
+    elif Edyn.d_tag == DT_SYMTAB:
+      symtab = Edyn.d_val
+      print "SYMTAB", hex(symtab)
+    elif Edyn.d_tag == DT_HASH:
+      dthash = Edyn.d_val
+      print "HASH"
+    elif Edyn.d_tag == 10:
+      strsz = Edyn.d_val
+      print "STRSZ"
+      
+    addr += 8
+    Edyn = Elf32Dyn(bin.memory[addr:addr+8], bin.binformat.endianness)
+  
+  addr = symtab+16
+  Esym = Elf32Sym(bin.memory[addr:addr+16], bin.binformat.endianness)
+  print Esym.st_name, Esym.st_value, Esym.st_size, Esym.st_info, Esym.st_other, Esym.st_shndx
+  while Esym.st_name != 0:
+    #self.st_name, self.st_value, self.st_size, self.st_info, self.st_other,\
+    #self.st_shndx    
+    print "=>>>>", pull_ascii(bin.memory, strtab+Esym.st_name), hex(Esym.st_size),\
+                  hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other), hex(Esym.st_shndx)
+    addr += 16
+    Esym = Elf32Sym(bin.memory[addr:addr+16], bin.binformat.endianness)
+  
+  print hex(addr)
