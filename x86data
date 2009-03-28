@@ -1,0 +1,968 @@
+AAA 37 (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s u s s s u u m u m 
+
+AAD D5 0A Adjust two BCD digits in AL and AH. (Invalid in 64-bit mode.) 
+AAD2 D5 ib Adjust two BCD digits to the immediate byte base. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s u s s s m m u m u
+
+AAM D4 0A (Invalid in 64-bit mode.) 
+AAM2 D4 ib Create a pair of unpacked values to the immediate byte base. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s u s s s m m u m u
+
+AAS 3F Create an unpacked BCD number from the contents of the AL register. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s u s s s u u m u m 
+
+ADC AL, imm8 14 ib Add imm8 to AL + CF. 
+ADC AX, imm16 15 iw Add imm16 to AX + CF. 
+ADC EAX, imm32 15 id Add imm32 to EAX + CF. 
+ADC RAX, imm32 15 id Add sign-extended imm32 to RAX + CF. 
+ADC reg/mem8, imm8 80 /2 ib Add imm8 to reg/mem8 + CF. 
+ADC reg/mem16, imm16 81 /2 iw Add imm16 to reg/mem16 + CF. 
+ADC reg/mem32, imm32 81 /2 id Add imm32 to reg/mem32 + CF. 
+ADC reg/mem64, imm32 81 /2 id Add sign-extended imm32 to reg/mem64 + CF. 
+ADC reg/mem16, imm8 83 /2 ib Add sign-extended imm8 to reg/mem16 + CF. 
+ADC reg/mem32, imm8 83 /2 ib Add sign-extended imm8 to reg/mem32 + CF. 
+ADC reg/mem64, imm8 83 /2 ib Add sign-extended imm8 to reg/mem64 + CF. 
+ADC reg/mem8, reg8 10 /r Add reg8 to reg/mem8 + CF 
+ADC reg/mem16, reg16 11 /r Add reg16 to reg/mem16 + CF. 
+ADC reg/mem32, reg32 11 /r Add reg32 to reg/mem32 + CF. 
+ADC reg/mem64, reg64 11 /r Add reg64 to reg/mem64 + CF. 
+ADC reg8, reg/mem8 12 /r Add reg/mem8 to reg8 + CF. 
+ADC reg16, reg/mem16 13 /r Add reg/mem16 to reg16 + CF. 
+ADC reg32, reg/mem32 13 /r Add reg/mem32 to reg32 + CF. 
+ADC reg64, reg/mem64 13 /r Add reg/mem64 to reg64 + CF.
+eflags s s s s s s s s s m s s s m m m m m
+
+ADD AL, imm8 04 ib Add imm8 to AL. 
+ADD AX, imm16 05 iw Add imm16 to AX. 
+ADD EAX, imm32 05 id Add imm32 to EAX. 
+ADD RAX, imm32 05 id Add sign-extended imm32 to RAX. 
+ADD reg/mem8, imm8 80 /0 ib Add imm8 to reg/mem8. 
+ADD reg/mem16, imm16 81 /0 iw Add imm16 to reg/mem16 
+ADD reg/mem32, imm32 81 /0 id Add imm32 to reg/mem32. 
+ADD reg/mem64, imm32 81 /0 id Add sign-extended imm32 to reg/mem64. 
+ADD reg/mem16, imm8 83 /0 ib Add sign-extended imm8 to reg/mem16 
+ADD reg/mem32, imm8 83 /0 ib Add sign-extended imm8 to reg/mem32. 
+ADD reg/mem64, imm8 83 /0 ib Add sign-extended imm8 to reg/mem64. 
+ADD reg/mem8, reg8 00 /r Add reg8 to reg/mem8. 
+ADD reg/mem16, reg16 01 /r Add reg16 to reg/mem16. 
+ADD reg/mem32, reg32 01 /r Add reg32 to reg/mem32. 
+ADD reg/mem64, reg64 01 /r Add reg64 to reg/mem64. 
+ADD reg8, reg/mem8 02 /r Add reg/mem8 to reg8. 
+ADD reg16, reg/mem16 03 /r Add reg/mem16 to reg16. 
+ADD reg32, reg/mem32 03 /r Add reg/mem32 to reg32. 
+ADD reg64, reg/mem64 03 /r Add reg/mem64 to reg64.
+eflags s s s s s s s s s m s s s m m m m m
+
+AND AL, imm8 24 ib AND the contents of AL with an immediate 8-bit value and store the result in AL. 
+AND AX, imm16 25 iw AND the contents of AX with an immediate 16-bit value and store the result in AX. 
+AND EAX, imm32 25 id AND the contents of EAX with an immediate 32-bit value and store the result in EAX. 
+AND RAX, imm32 25 id AND the contents of RAX with a sign-extended immediate 32-bit value and store the result in RAX. 
+AND reg/mem8, imm8 80 /4 ib AND the contents of reg/mem8 with imm8. 
+AND reg/mem16, imm16 81 /4 iw AND the contents of reg/mem16 with imm16. 
+AND reg/mem32, imm32 81 /4 id AND the contents of reg/mem32 with imm32. 
+AND reg/mem64, imm32 81 /4 id AND the contents of reg/mem64 with sign-extended imm32. 
+AND reg/mem16, imm8 83 /4 ib AND the contents of reg/mem16 with a sign-extended 8-bit value. 
+AND reg/mem32, imm8 83 /4 ib AND the contents of reg/mem32 with a sign-extended 8-bit value. 
+AND reg/mem64, imm8 83 /4 ib AND the contents of reg/mem64 with a sign-extended 8-bit value. 
+AND reg/mem8, reg8 20 /r AND the contents of an 8-bit register or memory location with the contents of an 8-bit register.
+AND reg/mem16, reg16 21 /r AND the contents of a 16-bit register or memory location with the contents of a 16-bit register. 
+AND reg/mem32, reg32 21 /r AND the contents of a 32-bit register or memory location with the contents of a 32-bit register. 
+AND reg/mem64, reg64 21 /r AND the contents of a 64-bit register or memory location with the contents of a 64-bit register. 
+AND reg8, reg/mem8 22 /r AND the contents of an 8-bit register with the contents of an 8-bit memory location or register. 
+AND reg16, reg/mem16 23 /r AND the contents of a 16-bit register with the contents of a 16-bit memory location or register. 
+AND reg32, reg/mem32 23 /r AND the contents of a 32-bit register with the contents of a 32-bit memory location or register. 
+AND reg64, reg/mem64 23 /r AND the contents of a 64-bit register with the contents of a 64-bit memory location or register. 
+eflags s s s s s s s s s 0 s s s 0 0 u m 0
+
+BOUND reg16, mem16&mem16 62 /r Test whether a 16-bit array index is within the bounds specified by the two 16-bit values in mem16&mem16. (Invalid in 64-bit mode.) 
+BOUND reg32, mem32&mem32 62 /r Test whether a 32-bit array index is within the bounds specified by the two 32-bit values in mem32&mem32. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s s s s s s s s s s
+
+BSF reg16, reg/mem16 0F BC /r Bit scan forward on the contents of reg/mem16. 
+BSF reg32, reg/mem32 0F BC /r Bit scan forward on the contents of reg/mem32. 
+BSF reg64, reg/mem64 0F BC /r Bit scan forward on the contents of reg/mem64 
+eflags s s s s s s s s s u s s s u m u u u
+
+BSR reg16, reg/mem16 0F BD /r Bit scan reverse on the contents of reg/mem16. 
+BSR reg32, reg/mem32 0F BD /r Bit scan reverse on the contents of reg/mem32. 
+BSR reg64, reg/mem64 0F BD /r Bit scan reverse on the contents of reg/mem64. 
+eflags s s s s s s s s s u s s s u m u u u
+
+BSWAP reg32 0F C8 +rd Reverse the byte order of reg32. 
+BSWAP reg64 0F C8 +rq Reverse the byte order of reg64.
+eflags s s s s s s s s s s s s s s s s s s
+
+BT reg/mem16, reg16 0F A3 /r Copy the value of the selected bit to the carry flag. 
+BT reg/mem32, reg32 0F A3 /r Copy the value of the selected bit to the carry flag. 
+BT reg/mem64, reg64 0F A3 /r Copy the value of the selected bit to the carry flag. 
+BT reg/mem16, imm8 0F BA /4 ib Copy the value of the selected bit to the carry flag. 
+BT reg/mem32, imm8 0F BA /4 ib Copy the value of the selected bit to the carry flag. 
+BT reg/mem64, imm8 0F BA /4 ib Copy the value of the selected bit to the carry flag.
+eflags s s s s s s s s s u s s s u u u u m
+
+BTC reg/mem16, reg16 0F BB /r Copy the value of the selected bit to the carry flag, then complement the selected bit. 
+BTC reg/mem32, reg32 0F BB /r Copy the value of the selected bit to the carry flag, then complement the selected bit. 
+BTC reg/mem64, reg64 0F BB /r Copy the value of the selected bit to the carry flag, then complement the selected bit. 
+BTC reg/mem16, imm8 0F BA /7 ib Copy the value of the selected bit to the carry flag, then complement the selected bit. 
+BTC reg/mem32, imm8 0F BA /7 ib Copy the value of the selected bit to the carry flag, then complement the selected bit. 
+BTC reg/mem64, imm8 0F BA /7 ib Copy the value of the selected bit to the carry flag, then complement the selected bit.
+eflags s s s s s s s s s u s s s u u u u m
+
+BTR reg/mem16, reg16 0F B3 /r Copy the value of the selected bit to the carry flag, then clear the selected bit. 
+BTR reg/mem32, reg32 0F B3 /r Copy the value of the selected bit to the carry flag, then clear the selected bit. 
+BTR reg/mem64, reg64 0F B3 /r Copy the value of the selected bit to the carry flag, then clear the selected bit. 
+BTR reg/mem16, imm8 0F BA /6 ib Copy the value of the selected bit to the carry flag, thenclear the selected bit. 
+BTR reg/mem32, imm8 0F BA /6 ib Copy the value of the selected bit to the carry flag, then clear the selected bit. 
+BTR reg/mem64, imm8 0F BA /6 ib Copy the value of the selected bit to the carry flag, then clear the selected bit.
+eflags s s s s s s s s s u s s s u u u u m
+
+BTS reg/mem16, reg16 0F AB /r Copy the value of the selected bit to the carry flag, then set the selected bit. 
+BTS reg/mem32, reg32 0F AB /r Copy the value of the selected bit to the carry flag, then set the selected bit. 
+BTS reg/mem64, reg64 0F AB /r Copy the value of the selected bit to the carry flag, then set the selected bit. 
+BTS reg/mem16, imm8 0F BA /5 ib Copy the value of the selected bit to the carry flag, then set the selected bit. 
+BTS reg/mem32, imm8 0F BA /5 ib Copy the value of the selected bit to the carry flag, then set the selected bit. 
+BTS reg/mem64, imm8 0F BA /5 ib Copy the value of the selected bit to the carry flag, then set the selected bit.
+eflags s s s s s s s s s u s s s u u u u m
+
+CALL rel16off E8 iw Near call with the target specified by a 16-bit relative displacement. 
+CALL rel32off E8 id Near call with the target specified by a 32-bit relative displacement. 
+CALL reg/mem16 FF /2 Near call with the target specified by reg/mem16. 
+CALL reg/mem32 FF /2 Near call with the target specified by reg/mem32. (There is no prefix for encoding this in 64-bit mode.) 
+CALL reg/mem64 FF /2 Near call with the target specified by reg/mem64.
+eflags s s s s s s s s s s s s s s s s s s
+
+CALL FAR pntr16:16 9A cd Far call direct, with the target specified by a far pointer contained in the instruction. (Invalid in 64-bit mode.) 
+CALL FAR pntr16:32 9A cp Far call direct, with the target specified by a far pointer contained in the instruction. (Invalid in 64-bit mode.) 
+CALL FAR mem16:16 FF /3 Far call indirect, with the target specified by a far pointer in memory. 
+CALL FAR mem16:32 FF /3 Far call indirect, with the target specified by a far pointer in memory.
+eflags s s s s s s s s s s s s s s s s s s
+
+CBW 98 Sign-extend AL into AX. 
+CWDE 98 Sign-extend AX into EAX. 
+CDQE 98 Sign-extend EAX into RAX.
+eflags s s s s s s s s s s s s s s s s s s
+
+CWD 99 Sign-extend AX into DX:AX. 
+CDQ 99 Sign-extend EAX into EDX:EAX. 
+CQO 99 Sign-extend RAX into RDX:RAX.
+eflags s s s s s s s s s s s s s s s s s s
+
+CLC F8 Clear the carry flag (CF) to zero. 
+eflags s s s s s s s s s s s s s s s s s 0
+
+CLD FC Clear the direction flag (DF) to zero. 
+eflags s s s s s s s s s s 0 s s s s s s s
+
+CFLUSH mem8 0F AE /7 flush cache line containing mem8.
+eflags s s s s s s s s s s s s s s s s s s
+
+CMC F5 Complement the carry flag (CF). 
+eflags s s s s s s s s s s s s s s s s s m
+
+CMOVO reg64, reg/mem(16,32,64) 0F 40 /r Move if overflow (OF = 1). 
+CMOVNO reg64, reg/mem(16,32,64) 0F 41 /r Move if not overflow (OF = 0). 
+CMOVB reg64, reg/mem(16,32,64) 0F 42 /r Move if below (CF = 1). 
+CMOVC reg64, reg/mem(16,32,64) 0F 42 /r Move if carry (CF = 1). 
+CMOVNAE reg64, reg/mem(16,32,64) 0F 42 /r Move if not above or equal (CF = 1). 
+CMOVNB reg64,reg/mem(16,32,64) 0F 43 /r Move if not below (CF = 0). 
+CMOVNC reg64,reg/mem(16,32,64) 0F 43 /r Move if not carry (CF = 0). 
+CMOVAE reg64, reg/mem(16,32,64) 0F 43 /r Move if above or equal (CF = 0). 
+CMOVZ reg64, reg/mem(16,32,64) 0F 44 /r Move if zero (ZF = 1).0F 43 /r Move if above or equal (CF = 0). 
+CMOVE reg64, reg/mem(16,32,64) 0F 44 /r Move if equal (ZF =1). 
+CMOVNZ reg64, reg/mem(16,32,64) 0F 45 /r Move if not zero (ZF = 0). 
+CMOVNE reg64, reg/mem(16,32,64) 0F 45 /r Move if not equal (ZF = 0). 
+CMOVBE reg64, reg/mem(16,32,64) 0F 46 /r Move if below or equal (CF = 1 or ZF = 1). 
+CMOVNA reg64, reg/mem(16,32,64) 0F 46 /r Move if not above (CF = 1 or ZF = 1). 
+CMOVNBE reg64,reg/mem(16,32,64) 0F 47 /r Move if not below or equal (CF = 0 and ZF = 0). 
+CMOVA reg64, reg/mem(16,32,64) 0F 47 /r Move if above (CF = 0 and ZF = 0). 
+CMOVS reg64, reg/mem(16,32,64) 0F 48 /r Move if sign (SF =1). 
+CMOVNS reg64, reg/mem(16,32,64) 0F 49 /r Move if not sign (SF = 0). 
+CMOVP reg64, reg/mem(16,32,64) 0F 4A /r Move if parity (PF = 1). 
+CMOVPE reg64, reg/mem(16,32,64) 0F 4A /r Move if parity even (PF = 1). 
+CMOVNP reg64, reg/mem(16,32,64) 0F 4B /r Move if not parity (PF = 0). 
+CMOVPO reg64, reg/mem(16,32,64) 0F 4B /r Move if parity odd (PF = 0). 
+CMOVL reg64, reg/mem(16,32,64) 0F 4C /r Move if less (SF <> OF). 
+CMOVNGE reg64, reg/mem(16,32,64) 0F 4C /r Move if not greater or equal (SF <> OF). 
+CMOVNL reg64, reg/mem(16,32,64) 0F 4D /r Move if not less (SF = OF). 
+CMOVGE reg64, reg/mem(16,32,64) 0F 4D /r Move if greater or equal (SF = OF). 
+CMOVLE reg64, reg/mem(16,32,64) 0F 4E /r Move if less or equal (ZF = 1 or SF <> OF). 
+CMOVNG reg64, reg/mem(16,32,64) 0F 4E /r Move if not greater (ZF = 1 or SF <> OF). 
+CMOVNLE reg64, reg/mem(16,32,64) 0F 4F /r Move if not less or equal (ZF = 0 and SF = OF). 
+CMOVG reg64, reg/mem(16,32,64) 0F 4F /r Move if greater (ZF = 0 and SF = OF). 
+eflags s s s s s s s s s s s s s s s s s s
+
+CMP AL, imm8 3C ib Compare an 8-bit immediate value with the contents of the AL register. 
+CMP AX, imm16 3D iw Compare a 16-bit immediate value with the contents of the AX register. 
+CMP EAX, imm32 3D id Compare a 32-bit immediate value with the contents of the EAX register. 
+CMP RAX, imm32 3D id Compare a 32-bit immediate value with the contents of the RAX register. 
+CMP reg/mem8, imm8 80 /7 ib Compare an 8-bit immediate value with the contents of an 8-bit register or memory operand. 
+CMP reg/mem16, imm16 81 /7 iw Compare a 16-bit immediate value with the contents of a 16-bit register or memory operand. 
+CMP reg/mem32, imm32 81 /7 id Compare a 32-bit immediate value with the contents of a 32-bit register or memory operand. 
+CMP reg/mem64, imm32 81 /7 id Compare a 32-bit signed immediate value with the contents of a 64-bit register or memory operand. 
+CMP reg/mem16, imm8 83 /7 ib Compare an 8-bit signed immediate value with the contents of a 16-bit register or memory operand. 
+CMP reg/mem32, imm8 83 /7 ib Compare an 8-bit signed immediate value with the contents of a 32-bit register or memory operand. 
+CMP reg/mem64, imm8 83 /7 ib Compare an 8-bit signed immediate value with the contents of a 64-bit register or memory operand. 
+CMP reg/mem8, reg8 38 /r Compare the contents of an 8-bit register or memory operand with the contents of an 8-bit register. 
+CMP reg/mem16, reg16 39 /r Compare the contents of a 16-bit register or memory operand with the contents of a 16-bit register. 
+CMP reg/mem32, reg32 39 /r Compare the contents of a 32-bit register or memory operand with the contents of a 32-bit register. 
+CMP reg/mem64, reg64 39 /r Compare the contents of a 64-bit register or memory operand with the contents of a 64-bit register.
+CMP reg8, reg/mem8 3A /r Compare the contents of an 8-bit register with the contents of an 8-bit register or memory operand. 
+CMP reg16, reg/mem16 3B /r Compare the contents of a 16-bit register with the contents of a 16-bit register or memory operand. 
+CMP reg32, reg/mem32 3B /r Compare the contents of a 32-bit register with the contents of a 32-bit register or memory operand. 
+CMP reg64, reg/mem64 3B /r Compare the contents of a 64-bit register with the contents of a 64-bit register or memory operand. 
+eflags s s s s s s s s s m s s s m m m m m
+
+CMPS mem8, mem8 A6 Compare the byte at DS:rSI with the byte at ES:rDI and then increment or decrement rSI and rDI. 
+CMPS mem16, mem16 A7 Compare the word at DS:rSI with the word at ES:rDI and then increment or decrement rSI and rDI. 
+CMPS mem32, mem32 A7 Compare the doubleword at DS:rSI with the doubleword at ES:rDI and then increment or decrement rSI and rDI. CMPS mem64, mem64 A7 Compare the quadword at DS:rSI with the quadword at ES:rDI and then increment or decrement rSI and rDI.
+CMPSB A6 Compare the byte at DS:rSI with the byte at ES:rDI and then increment or decrement rSI and rDI. 
+CMPSW A7 Compare the word at DS:rSI with the word at ES:rDI and then increment or decrement rSI and rDI. 
+CMPSD A7 Compare the doubleword at DS:rSI with the doubleword at ES:rDI and then increment or decrement rSI and rDI. 
+CMPSQ A7 Compare the quadword at DS:rSI with the quadword at ES:rDI and then increment or decrement rSI and rDI. 
+eflags s s s s s s s s s m s s s m m m m m
+
+CMPXCHG reg/mem8, reg8 0F B0 /r Compare AL register with an 8-bit register or memory location. If equal, copy the second operand to the first operand. Otherwise, copy the first operand to AL. 
+CMPXCHG reg/mem16, reg16 0F B1 /r Compare AX register with a 16-bit register or memory location. If equal, copy the second operand to the first operand. Otherwise, copy the first operand to AX. 
+CMPXCHG reg/mem32, reg32 0F B1 /r Compare EAX register with a 32-bit register or memory location. If equal, copy the second operand to the first operand. Otherwise, copy the first operand to EAX. 
+CMPXCHG reg/mem64, reg64 0F B1 /r Compare RAX register with a 64-bit register or memory location. If equal, copy the second operand to the first operand. Otherwise, copy the first operand to RAX.
+eflags s s s s s s s s s m s s s m m m m m
+
+CMPXCHG8B mem64 0F C7 /1 m64 Compare EDX:EAX register to 64-bit memory location. If equal, set the zero flag (ZF) to 1 and copy the ECX:EBX register to the memory location. Otherwise, copy the memory location to EDX:EAX and clear the zero flag. 
+CMPXCHG16B mem128 0F C7 /1 m128 Compare RDX:RAX register to 128-bit memory location. If equal, set the zero flag (ZF) to 1 and copy the RCX:RBX register to the memory location. Otherwise, copy the memory location to RDX:RAX and clear the zero flag.
+eflags s s s s s s s s s s s s s s m s s s 
+
+CPUID 0F A2 capabilities.  EAX specifies the function number, and the data is returned in EAX, EBX, ECX, EDX.
+eflags s s s s s s s s s s s s s s s s s s
+
+DAA 27 Decimal adjust AL. (Invalid in 64-bit mode.) 
+DAS 2F Decimal adjusts AL after subtraction. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s u s s s m m m m m
+
+DEC reg/mem8 FE /1 Decrement the contents of an 8-bit register or memory location by 1. 
+DEC reg/mem16 FF /1 Decrement the contents of a 16-bit register or memory location by 1. 
+DEC reg/mem32 FF /1 Decrement the contents of a 32-bit register or memory location by 1. 
+DEC reg/mem64 FF /1 Decrement the contents of a 64-bit register or memory location by 1. 
+DEC reg16 48 +rw Decrement the contents of a 16-bit register by 1. (See “REX Prefixes” on page11.) 
+DEC reg32 48 +rd Decrement the contents of a 32-bit register by 1. (See “REX Prefixes” on page11.) 
+eflags s s s s s s s s s u s s s m m m m m
+
+DIV reg/mem8 F6 /6 Perform unsigned division of AX by the contents of an 8- bit register or memory location and store the quotient in AL and the remainder in AH. 
+DIV reg/mem16 F7 /6 Perform unsigned division of DX:AX by the contents of a 16-bit register or memory operand store the quotient in AX and the remainder in DX. 
+DIV reg/mem32 F7 /6 Perform unsigned division of EDX:EAX by the contents of a 32-bit register or memory location and store the quotient in EAX and the remainder in EDX. 
+DIV reg/mem64 F7 /6 Perform unsigned division of RDX:RAX by the contents of a 64-bit register or memory location and store the quotient in RAX and the remainder in RDX.
+eflags s s s s s s s s s m s s s m m m m s
+
+ENTER imm16, 0 C8 iw 00 Create a procedure stack frame. 
+ENTER imm16, 1 C8 iw 01 Create a nested stack frame for a procedure. 
+ENTER imm16, imm8 C8 iw ib Create a nested stack frame for a procedure.
+eflags s s s s s s s s s u s s s u u u u u
+
+IDIV reg/mem8 F6 /7 Perform signed division of AX by the contents of an 8-bit register or memory location and store the quotient in AL and the remainder in AH. 
+IDIV reg/mem16 F7 /7 Perform signed division of DX:AX by the contents of a 16-bit register or memory location and store the quotient in AX and the remainder in DX. 
+IDIV reg/mem32 F7 /7 Perform signed division of EDX:EAX by the contents of a 32-bit register or memory location and store the quotient in EAX and the remainder in EDX. 
+IDIV reg/mem64 F7 /7 Perform signed division of RDX:RAX by the contents of a 64-bit register or memory location and store the quotient in RAX and the remainder in RDX.
+eflags s s s s s s s s s s s s s s m s s s 
+
+IMUL reg/mem8 F6 /5 IMUL reg/mem8 F6 /5 Multiply the contents of AL by the contents of an 8-bit memory or register operand and put the signed result in AX. 
+IMUL reg/mem16 F7 /5 Multiply the contents of AX by the contents of a 16-bit memory or register operand and put the signed result in DX:AX. 
+IMUL reg/mem32 F7 /5 Multiply the contents of EAX by the contents of a 32-bit memory or register operand and put the signed result in EDX:EAX. 
+IMUL reg/mem64 F7 /5 Multiply the contents of RAX by the contents of a 64-bit memory or register operand and put the signed result in RDX:RAX. 
+IMUL reg16, reg/mem16 0F AF /r Multiply the contents of a 16-bit destination register by the contents of a 16-bit register or memory operand and put the signed result in the 16-bit destination register. 
+IMUL reg32, reg/mem32 0F AF /r Multiply the contents of a 32-bit destination register by the contents of a 32-bit register or memory operand and put the signed result in the 32-bit destination register. 
+IMUL reg64, reg/mem64 0F AF /r Multiply the contents of a 64-bit destination register by the contents of a 64-bit register or memory operand and put the signed result in the 64-bit destination register. 
+IMUL reg16, reg/mem16, imm8 6B /r ib Multiply the contents of a 16-bit register or memory operand by a sign-extended immediate byte and put the signed result in the 16-bit destination register.
+IMUL reg32, reg/mem32, imm8 6B /r ib Multiply the contents of a 32-bit register or memory operand by a sign-extended immediate byte and put the signed result in the 32-bit destination register. 
+IMUL reg64, reg/mem64, imm8 6B /r ib Multiply the contents of a 64-bit register or memory operand by a sign-extended immediate byte and put the signed result in the 64-bit destination register. 
+IMUL reg16, reg/mem16, imm16 69 /r iw Multiply the contents of a 16-bit register or memory operand by a sign-extended immediate word and put the signed result in the 16-bit destination register. 
+IMUL reg32, reg/mem32, imm32 69 /r id Multiply the contents of a 32-bit register or memory operand by a sign-extended immediate double and put the signed result in the 32-bit destination register. 
+IMUL reg64, reg/mem64, imm32 69 /r id Multiply the contents of a 64-bit register or memory operand by a sign-extended immediate double and put the signed result in the 64-bit destination register. 
+eflags s s s s s s s s s u s s s u u u u u
+
+IN AL, imm8 E4 ib Input a byte from the port at the address specified by imm8 and put it into the AL register. 
+IN AX, imm8 E5 ib Input a word from the port at the address specified by imm8 and put it into the AX register. 
+IN EAX, imm8 E5 ib Input a doubleword from the port at the address specified by imm8 and put it into the EAX register. 
+IN AL, DX EC Input a byte from the port at the address specified by the DX register and put it into the AL register. 
+IN AX, DX ED Input a word from the port at the address specified by the DX register and put it into the AX register. 
+IN EAX, DX ED Input a doubleword from the port at the address specified by the DX register and put it into the EAX register. 
+eflags s s s s s s s s s m s s s u u u u m
+
+INC reg/mem8 FE /0 Increment the contents of an 8-bit register or memory location by 1. 
+INC reg/mem16 FF /0 Increment the contents of a 16-bit register or memory location by 1. 
+INC reg/mem32 FF /0 Increment the contents of a 32-bit register or memory location by 1. 
+INC reg/mem64 FF /0 Increment the contents of a 64-bit register or memory location by 1. 
+INC reg16 40 +rw Increment the contents of a 16-bit register by 1. (These opcodes are used as REX prefixes in 64-bit mode. See “REX Prefixes” on page11.)
+INC reg32 40 +rd Increment the contents of a 32-bit register by 1. (These opcodes are used as REX prefixes in 64-bit mode. See “REX Prefixes” on page11.)
+eflags s s s s s s s s s s s s s s m s s s 
+
+INS mem8, DX 6C Input a byte from the port specified by DX, put it into the memory location specified in ES:rDI, and then increment or decrement rDI. 
+INS mem16, DX 6D Input a word from the port specified by DX register, put it into the memory location specified in ES:rDI, and then increment or decrement rDI. 
+INS mem32, DX 6D Input a doubleword from the port specified by DX, put it into the memory location specified in ES:rDI, and then increment or decrement rDI. 
+INSB 6C Input a byte from the port specified by DX, put it into the memory location specified in ES:rDI, and then increment or decrement rDI.
+INSW 6D Input a word from the port specified by DX, put it into the memory location specified in ES:rDI, and then increment or decrement rDI. 
+INSD 6D Input a doubleword from the port specified by DX, put it into the memory location specified in ES:rDI, and then increment or decrement rDI. 
+eflags s s s s s s s s s m s s s m m m m s
+
+INT imm8 CD ib Call interrupt service routine specified by interrupt vector imm8.
+eflags s s s s s s s s s s s s s s m s s s 
+
+INTO CE Call overflow exception if the overflow flag is set. (Invalid in 64-bit mode.) 
+eflags s s m m m 0 m s s s s m 0 m m m m m
+
+JO rel8off 70 cb 
+JO rel16off 0F 80 cw 
+JO rel32off 0F 80 cd Jump if overflow (OF = 1). 
+JNO rel8off 71 cb 
+JNO rel16off 0F 81 cw 
+JNO rel32off 0F 81 cd Jump if not overflow (OF = 0). 
+JB rel8off 72 cb 
+JB rel16off 0F 82 cw 
+JB rel32off 0F 82 cd Jump if below (CF = 1).
+eflags s s s s s s s s s s s s s s s s s s 
+
+JC rel8off 72 cb 
+JC rel16off 0F 82 cw Jump if carry (CF = 1). 
+JC rel32off 0F 82 cd
+eflags s s s s s s s s s s s s s s s s s s 
+
+JNAE rel8off 72 cb 
+JNAE rel16off 0F 82 cw 
+JNAE rel32off 0F 82 cd Jump if not above or equal (CF = 1). 
+JNB rel8off 73 cb 
+JNB rel16off 0F 83 cw 
+JNB rel32off 0F 83 cd Jump if not below (CF = 0). 
+JNC rel8off 73 cb 
+JNC rel16off 0F 83 cw 
+JNC rel32off 0F 83 cd Jump if not carry (CF = 0). 
+JAE rel8off 73 cb 
+JAE rel16off 0F 83 cw 
+JAE rel32off 0F 83 cd Jump if above or equal (CF = 0). 
+JZ rel8off 74 cb 
+JZ rel16off 0F 84 cw 
+JZ rel32off 0F 84 cd Jump if zero (ZF = 1). 
+JE rel8off 74 cb 
+JE rel16off 0F 84 cw 
+JE rel32off 0F 84 cd Jump if equal (ZF = 1). 
+JNZ rel8off 75 cb 
+JNZ rel16off 0F 85 cw 
+JNZ rel32off 0F 85 cd Jump if not zero (ZF = 0). 
+JNE rel8off 75 cb 
+JNE rel16off 0F 85 cw 
+JNE rel32off 0F 85 cd Jump if not equal (ZF = 0). 
+JBE rel8off 76 cb 
+JBE rel16off 0F 86 cw 
+JBE rel32off 0F 86 cd Jump if below or equal (CF = 1 or ZF = 1). 
+JNA rel8off 76 cb 
+JNA rel16off 0F 86 cw 
+JNA rel32off 0F 86 cd Jump if not above (CF = 1 or ZF = 1). 
+JNBE rel8off 77 cb 
+JNBE rel16off 0F 87 cw 
+JNBE rel32off 0F 87 cd Jump if not below or equal (CF = 0 and ZF = 0). 
+JA rel8off 77 cb 
+JA rel16off 0F 87 cw 
+JA rel32off 0F 87 cd Jump if above (CF = 0 and ZF = 0). 
+JS rel8off 78 cb 
+JS rel16off 0F 88 cw 
+JS rel32off 0F 88 cd Jump if sign (SF = 1). 
+JNS rel8off 79 cb 
+JNS rel16off 0F 89 cw 
+JNS rel32off 0F 89 cd Jump if not sign (SF = 0). Jump if not above or equal (CF = 1). 
+JP rel8off 7A cb 
+JP rel16off 0F 8A cw 
+JP rel32off 0F 8A cd Jump if parity (PF = 1). 
+JPE rel8off 7A cb 
+JPE rel16off 0F 8A cw 
+JPE rel32off 0F 8A cd Jump if parity even (PF = 1). 
+JNP rel8off 7B cb 
+JNP rel16off 0F 8B cw 
+JNP rel32off 0F 8B cd Jump if not parity (PF = 0). 
+JPO rel8off 7B cb 
+JPO rel16off 0F 8B cw 
+JPO rel32off 0F 8B cd Jump if parity odd (PF = 0). 
+JL rel8off 7C cb 
+JL rel16off 0F 8C cw  
+JL rel32off 0F 8C cd Jump if less (SF <> OF). 
+JNGE rel8off 7C cb 
+JNGE rel16off 0F 8C cw 
+JNGE rel32off 0F 8C cd Jump if not greater or equal (SF <> OF). 
+JNL rel8off 7D cb 
+JNL rel16off 0F 8D cw 
+JNL rel32off 0F 8D cd Jump if not less (SF = OF). 
+JGE rel8off 7D cb 
+JGE rel16off 0F 8D cw 
+JGE rel32off 0F 8D cd Jump if greater or equal (SF = OF). 
+JLE rel8off 7E cb 
+JLE rel16off 0F 8E cw 
+JLE rel32off 0F 8E cd Jump if less or equal (ZF = 1 or SF <> OF). 
+JNG rel8off 7E cb 
+JNG rel16off 0F 8E cw 
+JNG rel32off 0F 8E cd Jump if not greater (ZF = 1 or SF <> OF). 
+JNLE rel8off 7F cb 
+JNLE rel16off 0F 8F cw 
+JNLE rel32off 0F 8F cd Jump if not less or equal (ZF = 0 and SF = OF). 
+JG rel8off 7F cb 
+JG rel16off 0F 8F cw 
+JG rel32off 0F 8F cd Jump if greater (ZF = 0 and SF = OF). 
+eflags s s s s s s s s s s s s s s s s s s 
+
+JCXZ rel8off E3 cb Jump short if the 16-bit count register (CX) is zero. 
+JECXZ rel8off E3 cb Jump short if the 32-bit count register (ECX) is zero. 
+JRCXZ rel8off E3 cb Jump short if the 64-bit count register (RCX) is zero. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+JMP rel8off EB cb Short jump with the target specified by an 8-bit signed displacement. 
+JMP rel16off E9 cw Near jump with the target specified by a 16-bit signed displacement. 
+JMP rel32off E9 cd Near jump with the target specified by a 32-bit signed displacement. 
+JMP reg/mem16 FF /4 Near jump with the target specified reg/mem16. 
+JMP reg/mem32 FF /4 Near jump with the target specified reg/mem32. (No prefix for encoding in 64-bit mode.) 
+JMP reg/mem64 FF /4 Near jump with the target specified reg/mem64.
+eflags s s s s s s s s s s s s s s s s s s 
+
+JMP FAR pntr16:16 EA cd Far jump direct, with the target specified by a far pointer contained in the instruction. (Invalid in 64-bit mode.) 
+JMP FAR pntr16:32 EA cp Far jump direct, with the target specified by a far pointer contained in the instruction. (Invalid in 64-bit mode.) 
+JMP FAR mem16:16 FF /5 Far jump indirect, with the target specified by a far pointer in memory. 
+JMP FAR mem16:32 FF /5 Far jump indirect, with the target specified by a far pointer in memory.
+eflags s s s s s s s s s s s s s s s s s s 
+
+LAHF 9F Load the SF, ZF, AF, PF, and CF flags into the AH register. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+LDS reg16, mem16:16 C5 /r Load DS:reg16 with a far pointer from memory. (Invalid in 64-bit mode.) 
+LDS reg32, mem16:32 C5 /r Load DS:reg32 with a far pointer from memory. (Invalid in 64-bit mode.) 
+LES reg16, mem16:16 C4 /r Load ES:reg16 with a far pointer from memory. (Invalid in 64-bit mode.) 
+LES reg32, mem16:32 C4 /r Load ES:reg32 with a far pointer from memory. (Invalid in 64-bit mode.) 
+LFS reg16, mem16:16 0F B4 /r Load FS:reg16 with a far pointer from memory. 
+LFS reg32, mem16:32 0F B4 /r Load FS:reg32 with a far pointer from memory. 
+LGS reg16, mem16:16 0F B5 /r Load GS:reg16 with a far pointer from memory. 
+LGS reg32, mem16:32 0F B5 /r Load GS:reg32 with a far pointer from memory. 
+LSS reg16, mem16:16 0F B2 /r Load SS:reg16 with a far pointer from memory. 
+LSS reg32, mem16:32 0F B2 /r Load SS:reg32 with a far pointer from memory.
+eflags s s s s s s s s s s s s s s s s s s 
+
+LEA reg16, mem 8D /r Store effective address in a 16-bit register. 
+LEA reg32, mem 8D /r Store effective address in a 32-bit register. 
+LEA reg64, mem 8D /r Store effective address in a 64-bit register. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+LEAVE C9 Set the stack pointer register SP to the value in the BP register and pop BP. 
+LEAVE C9 Set the stack pointer register ESP to the value in the EBP register and pop EBP. (No prefix for encoding this in 64-bit mode.) 
+LEAVE C9 Set the stack pointer register RSP to the value in the RBP register and pop RBP. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+LFENCE 0F AE E8 Force strong ordering of (serialize) load operations. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+LODS mem8 AC Load byte at DS:rSI into AL and then increment or decrement rSI. 
+LODS mem16 AD Load word at DS:rSI into AX and then increment or decrement rSI. 
+LODS mem32 AD Load doubleword at DS:rSI into EAX and then increment or decrement rSI. 
+LODS mem64 AD Load quadword at DS:rSI into RAX and then increment or decrement rSI. 
+LODSB AC Load byte at DS:rSI into AL and then increment or decrement rSI. 
+LODSW AD Load the word at DS:rSI into AX and then increment or decrement rSI.
+eflags s s s s s s s s s s s s s s s s s s 
+
+LODSD AD Load doubleword at DS:rSI into EAX and then increment or decrement rSI. 
+LODSQ AD Load quadword at DS:rSI into RAX and then increment or decrement rSI. 
+eflags s s s s s s s s s u s s s u m u u m
+
+LOOP rel8off E2 cb Decrement rCX, then jump short if rCX is not 0. 
+LOOPE rel8off E1 cb Decrement rCX, then jump short if rCX is not 0 and ZF is 1. 
+LOOPNE rel8off E0 cb Decrement rCX, then Jump short if rCX is not 0 and ZF is 0. 
+LOOPNZ rel8off E0 cb Decrement rCX, then Jump short if rCX is not 0 and ZF is 0. 
+LOOPZ rel8off E1 cb Decrement rCX, then Jump short if rCX is not 0 and ZF is 1.
+eflags s s s s s s s s s s s s s s s s s s 
+
+LZCNT reg16, reg/mem16 F3 0F BD /r Count the number of leading zeros in reg/mem16. 
+LZCNT reg32, reg/mem32 F3 0F BD /r Count the number of leading zeros in reg/mem32. 
+LZCNT reg64, reg/mem64 F3 0F BD /r Count the number of leading zeros in reg/mem64.
+eflags s s s s s s s s s s s s s s s s s s 
+
+MFENCE 0F AE F0 Force strong ordering of (serialized) load and store operations. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MOV reg/mem8, reg8 88 /r Move the contents of an 8-bit register to an 8-bit destination register or memory operand. 
+MOV reg/mem16, reg16 89 /r Move the contents of a 16-bit register to a 16-bit destination register or memory operand. 
+MOV reg/mem32, reg32 89 /r Move the contents of a 32-bit register to a 32-bit destination register or memory operand. 
+MOV reg/mem64, reg64 89 /r Move the contents of a 64-bit register to a 64-bit destination register or memory operand. 
+MOV reg8, reg/mem8 8A /r Move the contents of an 8-bit register or memory operand to an 8-bit destination register.
+MOV reg16, reg/mem16 8B /r Move the contents of a 16-bit register or memory operand to a 16-bit destination register. 
+MOV reg32, reg/mem32 8B /r Move the contents of a 32-bit register or memory operand to a 32-bit destination register. 
+MOV reg64, reg/mem64 8B /r Move the contents of a 64-bit register or memory operand to a 64-bit destination register. 
+MOV reg16/32/64/mem16, segReg 8C /r Move the contents of a segment register to a 16-bit, 32- bit, or 64-bit destination register or to a 16-bit memory operand. 
+MOV segReg, reg/mem16 8E /r Move the contents of a 16-bit register or memory operand to a segment register. 
+MOV AL, moffset8 A0 Move 8-bit data at a specified memory offset to the AL register. 
+MOV AX, moffset16 A1 Move 16-bit data at a specified memory offset to the AX register. 
+MOV EAX, moffset32 A1 Move 32-bit data at a specified memory offset to the EAX register. 
+MOV RAX, moffset64 A1 Move 64-bit data at a specified memory offset to the RAX register. 
+MOV moffset8, AL A2 Move the contents of the AL register to an 8-bit memory offset. 
+MOV moffset16, AX A3 Move the contents of the AX register to a 16-bit memory offset. 
+MOV moffset32, EAX A3 Move the contents of the EAX register to a 32-bit memory offset. 
+MOV moffset64, RAX A3 Move the contents of the RAX register to a 64-bit memory offset. 
+MOV reg8, imm8 B0 +rb ib Move an 8-bit immediate value into an 8-bit register. 
+MOV reg16, imm16 B8 +rw iw Move a 16-bit immediate value into a 16-bit register. 
+MOV reg32, imm32 B8 +rd id Move an 32-bit immediate value into a 32-bit register. 
+MOV reg64, imm64 B8 +rq iq Move an 64-bit immediate value into a 64-bit register. 
+MOV reg/mem8, imm8 C6 /0 ib Move an 8-bit immediate value to an 8-bit register or memory operand. 
+MOV reg/mem16, imm16 C7 /0 iw Move a 16-bit immediate value to a 16-bit register or memory operand. 
+MOV reg/mem32, imm32 C7 /0 id Move a 32-bit immediate value to a 32-bit register or memory operand. 
+MOV reg/mem64, imm32 C7 /0 id Move a 32-bit signed immediate value to a 64-bit register or memory operand. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MOVD xmm, reg/mem32 66 0F 6E /r Move 32-bit value from a general-purpose register or 32-bit memory location to an XMM register. 
+MOVD xmm, reg/mem64 66 0F 6E /r Move 64-bit value from a general-purpose register or 64-bit memory location to an XMM register. 
+MOVD reg/mem32, xmm 66 0F 7E /r Move 32-bit value from an XMM register to a 32-bit general-purpose register or memory location. 
+MOVD reg/mem64, xmm 66 0F 7E /r Move 64-bit value from an XMM register to a 64-bit general-purpose register or memory location. 
+MOVD mmx, reg/mem32 0F 6E /r Move 32-bit value from a general-purpose register or 32-bit memory location to an MMX register. 
+MOVD mmx, reg/mem64 0F 6E /r Move 64-bit value from a general-purpose register or 64-bit memory location to an MMX register. 
+MOVD reg/mem32, mmx 0F 7E /r Move 32-bit value from an MMX register to a 32-bit general-purpose register or memory location. 
+MOVD reg/mem64, mmx 0F 7E /r Move 64-bit value from an MMX register to a 64-bit general-purpose register or memory location.
+MOVMSKPD reg32, xmm 66 0F 50 /r Move sign bits 127 and 63 in an XMM register to a 32-bit general-purpose register. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MOVNTI mem32, reg32 0F C3 /r Stores a 32-bit general-purpose register value into a 32- bit memory location, minimizing cache pollution. 
+MOVNTI mem64, reg64 0F C3 /r Stores a 64-bit general-purpose register value into a 64- bit memory location, minimizing cache pollution. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MOVS mem8, mem8 A4 Move byte at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+MOVS mem16, mem16 A5 Move word at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+MOVS mem32, mem32 A5 Move doubleword at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+MOVS mem64, mem64 A5 Move quadword at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+MOVSB A4 Move byte at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+MOVSW A5 Move word at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI.
+MOVSD A5 Move doubleword at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+MOVSQ A5 Move quadword at DS:rSI to ES:rDI, and then increment or decrement rSI and rDI. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MOVSX reg16, reg/mem8 0F BE /r Move the contents of an 8-bit register or memory location to a 16-bit register with sign extension. 
+MOVSX reg32, reg/mem8 0F BE /r Move the contents of an 8-bit register or memory location to a 32-bit register with sign extension. 
+MOVSX reg64, reg/mem8 0F BE /r Move the contents of an 8-bit register or memory location to a 64-bit register with sign extension. 
+MOVSX reg32, reg/mem16 0F BF /r Move the contents of an 16-bit register or memory location to a 32-bit register with sign extension. 
+MOVSX reg64, reg/mem16 0F BF /r Move the contents of an 16-bit register or memory location to a 64-bit register with sign extension. 
+MOVSXD reg64, reg/mem32 63 /r Move the contents of a 32-bit register or memory operand to a 64-bit register with sign extension. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MOVZX reg16, reg/mem8 0F B6 /r Move the contents of an 8-bit register or memory operand to a 16-bit register with zero-extension. 
+MOVZX reg32, reg/mem8 0F B6 /r Move the contents of an 8-bit register or memory operand to a 32-bit register with zero-extension. 
+MOVZX reg64, reg/mem8 0F B6 /r Move the contents of an 8-bit register or memory operand to a 64-bit register with zero-extension. 
+MOVZX reg32, reg/mem16 0F B7 /r Move the contents of a 16-bit register or memory operand to a 32-bit register with zero-extension. 
+MOVZX reg64, reg/mem16 0F B7 /r Move the contents of a 16-bit register or memory operand to a 64-bit register with zero-extension. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+MUL reg/mem8 F6 /4 Multiplies an 8-bit register or memory operand by the contents of the AL register and stores the result in the AX register. 
+MUL reg/mem16 F7 /4 Multiplies a 16-bit register or memory operand by the contents of the AX register and stores the result in the DX:AX register. 
+MUL reg/mem32 F7 /4 Multiplies a 32-bit register or memory operand by the contents of the EAX register and stores the result in the EDX:EAX register. 
+MUL reg/mem64 F7 /4 Multiplies a 64-bit register or memory operand by the contents of the RAX register and stores the result in the RDX:RAX register. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+NEG reg/mem8 F6 /3 Performs a two’s complement negation on an 8-bit register or memory operand. 
+NEG reg/mem16 F7 /3 Performs a two’s complement negation on a 16-bit register or memory operand. 
+NEG reg/mem32 F7 /3 Performs a two’s complement negation on a 32-bit register or memory operand. 
+NEG reg/mem64 F7 /3 Performs a two’s complement negation on a 64-bit register or memory operand. 
+eflags s s s s s s s s s m s s s u u u u m
+
+NOP 90 Performs no operation.
+eflags s s s s s s s s s m s s s m m m m m
+
+NOT reg/mem8 F6 /2 Complements the bits in an 8-bit register or memory operand. 
+NOT reg/mem16 F7 /2 Complements the bits in a 16-bit register or memory operand. 
+NOT reg/mem32 F7 /2 Complements the bits in a 32-bit register or memory operand. 
+NOT reg/mem64 F7 /2 Compliments the bits in a 64-bit register or memory operand. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+OR AL, imm8 0C ib OR the contents of AL with an immediate 8-bit value. 
+OR AX, imm16 0D iw OR the contents of AX with an immediate 16-bit value. 
+OR EAX, imm32 0D id OR the contents of EAX with an immediate 32-bit value. 
+OR RAX, imm32 0D id OR the contents of RAX with a sign-extended immediate 32-bit value. 
+OR reg/mem8, imm8 80 /1 ib OR the contents of an 8-bit register or memory operand and an immediate 8-bit value. 
+OR reg/mem16, imm16 81 /1 iw OR the contents of a 16-bit register or memory operand and an immediate 16-bit value. 
+OR reg/mem32, imm32 81 /1 id OR the contents of a 32-bit register or memory operand and an immediate 32-bit value. 
+OR reg/mem64, imm32 81 /1 id OR the contents of a 64-bit register or memory operand and sign-extended immediate 32-bit value. 
+OR reg/mem16, imm8 83 /1 ib OR the contents of a 16-bit register or memory operand and a sign-extended immediate 8-bit value. 
+OR reg/mem32, imm8 83 /1 ib OR the contents of a 32-bit register or memory operand and a sign-extended immediate 8-bit value. 
+OR reg/mem64, imm8 83 /1 ib OR the contents of a 64-bit register or memory operand and a sign-extended immediate 8-bit value. 
+OR reg/mem8, reg8 08 /r OR the contents of an 8-bit register or memory operand with the contents of an 8-bit register. 
+OR reg/mem16, reg16 09 /r OR the contents of a 16-bit register or memory operand with the contents of a 16-bit register. 
+OR reg/mem32, reg32 09 /r OR the contents of a 32-bit register or memory operand with the contents of a 32-bit register. 
+OR reg/mem64, reg64 09 /r OR the contents of a 64-bit register or memory operand with the contents of a 64-bit register. 
+OR reg8, reg/mem8 0A /r OR the contents of an 8-bit register with the contents of an 8-bit register or memory operand.OR the contents of a 16-bit register or memory operand 
+OR reg16, reg/mem16 0B /r OR the contents of a 16-bit register with the contents of a 16-bit register or memory operand. 
+OR reg32, reg/mem32 0B /r OR the contents of a 32-bit register with the contents of a 32-bit register or memory operand. 
+OR reg64, reg/mem64 0B /r OR the contents of a 64-bit register with the contents of a 64-bit register or memory operand. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+OUT imm8, AL E6 ib Output the byte in the AL register to the port specified by an 8-bit immediate value. 
+OUT imm8, AX E7 ib Output the word in the AX register to the port specified by an 8-bit immediate value. 
+OUT imm8, EAX E7 ib Output the doubleword in the EAX register to the port specified by an 8-bit immediate value. 
+OUT DX, AL EE Output byte in AL to the output port specified in DX. 
+OUT DX, AX EF Output word in AX to the output port specified in DX. 
+OUT DX, EAX EF Output doubleword in EAX to the output port specified in DX. 
+eflags s s s s s s s s s 0 s s s m m u m 0
+
+OUTS DX, mem8 6E Output the byte in DS:rSI to the port specified in DX, then increment or decrement rSI. 
+OUTS DX, mem16 6F Output the word in DS:rSI to the port specified in DX, then increment or decrement rSI. 
+OUTS DX, mem32 6F Output the doubleword in DS:rSI to the port specified in DX, then increment or decrement rSI. 
+OUTSB 6E Output the byte in DS:rSI to the port specified in DX, then increment or decrement rSI. 
+OUTSW 6F Output the word in DS:rSI to the port specified in DX, then increment or decrement rSI. 
+OUTSD 6F Output the doubleword in DS:rSI to the port specified in DX, then increment or decrement rSI.Output the word in DS:rSI to the port specified in DX, 
+eflags s s s s s s s s s s s s s s s s s s 
+
+PAUSE F3 90 Provides a hint to processor that a spin loop is being 
+eflags s s s s s s s s s s s s s s s s s s 
+
+POP reg/mem16 8F /0 Pop the top of the stack into a 16-bit register or memory location. 
+POP reg/mem32 8F /0 Pop the top of the stack into a 32-bit register or memory location. (No prefix for encoding this in 64-bit mode.) 
+POP reg/mem64 8F /0 Pop the top of the stack into a 64-bit register or memory location. 
+POP reg16 58 +rw Pop the top of the stack into a 16-bit register. 
+POP reg32 58 +rd Pop the top of the stack into a 32-bit register. a(No prefix for encoding this in 64-bit mode.) 
+POP reg64 58 +rq Pop the top of the stack into a 64-bit register. 
+POP DS 1F Pop the top of the stack into the DS register. (Invalid in 64-bit mode.) 
+POP ES 07 Pop the top of the stack into the ES register. (Invalid in 64-bit mode.) 
+POP SS 17 Pop the top of the stack into the SS register. (Invalid in 64-bit mode.) Pop the top of the stack into a 64-bit register or memory executed.
+POP FS 0F A1 Pop the top of the stack into the FS register. 
+POP GS 0F A9 Pop the top of the stack into the GS register. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+POPA 61 Pop the DI, SI, BP, SP, BX, DX, CX, and AX registers. (Invalid in 64-bit mode.) 
+POPAD 61 Pop the EDI, ESI, EBP, ESP, EBX, EDX, ECX, and EAX registers. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s s s s s s s s s s 
+
+POPCNT reg16, reg/mem16 F3 0F B8 /r Count the 1s in reg/mem16. 
+POPCNT reg32, reg/mem32 F3 0F B8 /r Count the 1s in reg/mem32. 
+POPCNT reg64, reg/mem64 F3 0F B8 /r Count the 1s in reg/mem64. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+POPF 9D Pop a word from the stack into the FLAGS register. 
+POPFD 9D Pop a double word from the stack into the EFLAGS register. (No prefix for encoding this in 64-bit mode.) 
+POPFQ 9D Pop a quadword from the stack to the RFLAGS register.
+eflags s s s s s s s s s 0 s s s 0 m 0 0 0
+
+PREFETCH mem8 0F 0D /0 Prefetch processor cache line into L1 data cache. 
+PREFETCHW mem8 0F 0D /1 Prefetch processor cache line into L1 data cache and mark it modified.
+eflags m s m m s 0 m m m m m m m m m m m m
+
+PREFETCHNTA mem8 0F 18 /0 Move data closer to the processor using the NTA reference. 
+PREFETCHT0 mem8 0F 18 /1 Move data closer to the processor using the T0 reference. 
+PREFETCHT1 mem8 0F 18 /2 Move data closer to the processor using the T1 reference. 
+PREFETCHT2 mem8 0F 18 /3 Move data closer to the processor using the T2 reference. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+PUSH reg/mem16 FF /6 Push the contents of a 16-bit register or memory operand onto the stack. 
+PUSH reg/mem32 FF /6 Push the contents of a 32-bit register or memory operand onto the stack. (No prefix for encoding this in 64-bit mode.) 
+PUSH reg/mem64 FF /6 Push the contents of a 64-bit register or memory operand onto the stack. 
+PUSH reg16 50 +rw Push the contents of a 16-bit register onto the stack. 
+PUSH reg32 50 +rd Push the contents of a 32-bit register onto the stack. (No prefix for encoding this in 64-bit mode.) 
+PUSH reg64 50 +rq Push the contents of a 64-bit register onto the stack. 
+PUSH imm8 6A ib Push an 8-bit immediate value (sign-extended to 16, 32, or 64 bits) onto the stack. 
+PUSH imm16 68 iw Push a 16-bit immediate value onto the stack. 
+PUSH imm32 68 id Push a 32-bit immediate value onto the stack. (No prefix for encoding this in 64-bit mode.) 
+PUSH imm64 68 id Push a sign-extended 32-bit immediate value onto the stack. 
+PUSH CS 0E Push the CS selector onto the stack. (Invalid in 64-bit mode.)
+eflags s s s s s s s s s s s s s s s s s s 
+
+PUSH SS 16 Push the SS selector onto the stack. (Invalid in 64-bit mode.) 
+PUSH DS 1E Push the DS selector onto the stack. (Invalid in 64-bit mode.) 
+PUSH ES 06 Push the ES selector onto the stack. (Invalid in 64-bit mode.) 
+PUSH FS 0F A0 Push the FS selector onto the stack. 
+PUSH GS 0F A8 Push the GS selector onto the stack. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+PUSHA 60 Push the contents of the AX, CX, DX, BX, original SP, BP, SI, and DI registers onto the stack. (Invalid in 64-bit mode.) 
+PUSHAD 60 Push the contents of the EAX, ECX, EDX, EBX, original ESP, EBP, ESI, and EDI registers onto the stack. (Invalid in 64-bit mode.) 
+eflags s s s s s s s s s s s s s s s s s s 
+
+PUSHF 9C Push the FLAGS word onto the stack. 
+PUSHFD 9C Push the EFLAGS doubleword onto stack. (No prefix encoding this in 64-bit mode.) 
+PUSHFQ 9C Push the RFLAGS quadword onto stack.
+eflags s s s s s s s s s s s s s s s s s s 
+
+RCL reg/mem8,1 D0 /2 Rotate the 9 bits consisting of the carry flag and an 8-bit register or memory location left 1 bit. 
+RCL reg/mem8, CL D2 /2 Rotate the 9 bits consisting of the carry flag and an 8-bit register or memory location left the number of bits specified in the CL register. 
+RCL reg/mem8, imm8 C0 /2 ib Rotate the 9 bits consisting of the carry flag and an 8-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+RCL reg/mem16, 1 D1 /2 Rotate the 17 bits consisting of the carry flag and a 16- bit register or memory location left 1 bit. 
+RCL reg/mem16, CL D3 /2 Rotate the 17 bits consisting of the carry flag and a 16- bit register or memory location left the number of bits specified in the CL register. 
+RCL reg/mem16, imm8 C1 /2 ib Rotate the 17 bits consisting of the carry flag and a 16- bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+RCL reg/mem32, 1 D1 /2 Rotate the 33 bits consisting of the carry flag and a 32- bit register or memory location left 1 bit. 
+RCL reg/mem32, CL D3 /2 Rotate 33 bits consisting of the carry flag and a 32-bit register or memory location left the number of bits specified in the CL register. 
+RCL reg/mem32, imm8 C1 /2 ib Rotate the 33 bits consisting of the carry flag and a 32- bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+RCL reg/mem64, 1 D1 /2 Rotate the 65 bits consisting of the carry flag and a 64- bit register or memory location left 1 bit.
+RCL reg/mem64, CL D3 /2 Rotate the 65 bits consisting of the carry flag and a 64- bit register or memory location left the number of bits specified in the CL register. 
+RCL reg/mem64, imm8 C1 /2 ib Rotates the 65 bits consisting of the carry flag and a 64- bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+eflags s s s s s s s s s m s s s s s s s m 
+
+RCR reg/mem8, 1 D0 /3 Rotate the 9 bits consisting of the carry flag and an 8-bit register or memory location right 1 bit. 
+RCR reg/mem8,CL D2 /3 Rotate the 9 bits consisting of the carry flag and an 8-bit register or memory location right the number of bits specified in the CL register. 
+RCR reg/mem8,imm8 C0 /3 ib Rotate the 9 bits consisting of the carry flag and an 8-bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+RCR reg/mem16,1 D1 /3 Rotate the 17 bits consisting of the carry flag and a 16- bit register or memory location right 1 bit. 
+RCR reg/mem16,CL D3 /3 Rotate the17 bits consisting of the carry flag and a 16- bit register or memory location right the number of bits specified in the CL register. 
+RCR reg/mem16, imm8 C1 /3 ib Rotate the 17 bits consisting of the carry flag and a 16- bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+RCR reg/mem32,1 D1 /3 Rotate the 33 bits consisting of the carry flag and a 32- bit register or memory location right 1 bit. 
+RCR reg/mem32,CL D3 /3 Rotate 33 bits consisting of the carry flag and a 32-bit register or memory location right the number of bits specified in the CL register. 
+RCR reg/mem32, imm8 C1 /3 ib Rotate the 33 bits consisting of the carry flag and a 32- bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+RCR reg/mem64,1 D1 /3 Rotate the 65 bits consisting of the carry flag and a 64- bit register or memory location right 1 bit.
+eflags s s s s s s s s s m s s s s s s s m
+
+RCR reg/mem64,CL D3 /3 RCR reg/mem64,CL D3 /3 Rotate 65 bits consisting of the carry flag and a 64-bit register or memory location right the number of bits specified in the CL register. 
+RCR reg/mem64, imm8 C1 /3 ib Rotate the 65 bits consisting of the carry flag and a 64- bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+RET C3 Near return to the calling procedure. 
+RET imm16 C2 iw Near return to the calling procedure then pop thspecified number of bytes from the stack. 
+eflags s s s s s s s s s s s s s s s s s s 
+
+ROL reg/mem8, 1 D0 /0 Rotate an 8-bit register or memory operand left 1 bit. 
+ROL reg/mem8, CL D2 /0 Rotate an 8-bit register or memory operand left the number of bits specified in the CL register. 
+ROL reg/mem8, imm8 C0 /0 ib Rotate an 8-bit register or memory operand left the number of bits specified by an 8-bit immediate value. 
+ROL reg/mem16, 1 D1 /0 Rotate a 16-bit register or memory operand left 1 bit. 
+ROL reg/mem16, CL D3 /0 Rotate a 16-bit register or memory operand left the number of bits specified in the CL register. 
+ROL reg/mem16, imm8 C1 /0 ib Rotate a 16-bit register or memory operand left the number of bits specified by an 8-bit immediate value. 
+ROL reg/mem32, 1 D1 /0 Rotate a 32-bit register or memory operand left 1 bit. 
+ROL reg/mem32, CL D3 /0 Rotate a 32-bit register or memory operand left the number of bits specified in the CL register. 
+ROL reg/mem32, imm8 C1 /0 ib Rotate a 32-bit register or memory operand left the number of bits specified by an 8-bit immediate value. 
+ROL reg/mem64, 1 D1 /0 Rotate a 64-bit register or memory operand left 1 bit. 
+ROL reg/mem64, CL D3 /0 Rotate a 64-bit register or memory operand left the number of bits specified in the CL register. 
+ROL reg/mem64, imm8 C1 /0 ib Rotate a 64-bit register or memory operand left the number of bits specified by an 8-bit immediate value.
+eflags s s s s s s s s s m s s s s s s s m
+
+ROR reg/mem8, 1 D0 /1 Rotate an 8-bit register or memory location right 1 bit. 
+ROR reg/mem8, CL D2 /1 Rotate an 8-bit register or memory location right the number of bits specified in the CL register. 
+ROR reg/mem8, imm8 C0 /1 ib Rotate an 8-bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+ROR reg/mem16, 1 D1 /1 Rotate a 16-bit register or memory location right 1 bit. 
+ROR reg/mem16, CL D3 /1 Rotate a 16-bit register or memory location right the number of bits specified in the CL register. 
+ROR reg/mem16, imm8 C1 /1 ib Rotate a 16-bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+ROR reg/mem32, 1 D1 /1 Rotate a 32-bit register or memory location right 1 bit. 
+ROR reg/mem32, CL D3 /1 Rotate a 32-bit register or memory location right the number of bits specified in the CL register. 
+ROR reg/mem32, imm8 C1 /1 ib Rotate a 32-bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+ROR reg/mem64, 1 D1 /1 Rotate a 64-bit register or memory location right 1 bit. 
+ROR reg/mem64, CL D3 /1 Rotate a 64-bit register or memory operand right the number of bits specified in the CL register. 
+ROR reg/mem64, imm8 C1 /1 ib Rotate a 64-bit register or memory operand right the number of bits specified by an 8-bit immediate value.Rotate a 16-bit register or memory location right the 
+eflags s s s s s s s s s m s s s s s s s m
+
+SAHF 9E Loads the sign flag, the zero flag, the auxiliary flag, the parity flag, and the carry flag from the AH register into the lower 8 bits of the EFLAGS register.
+
+SAL reg/mem8, 1 D0 /4 Shift an 8-bit register or memory location left 1 bit. 
+SAL reg/mem8, CL D2 /4 Shift an 8-bit register or memory location left the number of bits specified in the CL register. 
+SAL reg/mem8, imm8 C0 /4 ib Shift an 8-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+SAL reg/mem16, 1 D1 /4 Shift a 16-bit register or memory location left 1 bit. 
+SAL reg/mem16, CL D3 /4 Shift a 16-bit register or memory location left the number of bits specified in the CL register. 
+SAL reg/mem16, imm8 C1 /4 ib Shift a 16-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+SAL reg/mem32, 1 D1 /4 Shift a 32-bit register or memory location left 1 bit. 
+SAL reg/mem32, CL D3 /4 Shift a 32-bit register or memory location left the number of bits specified in the CL register. 
+SAL reg/mem32, imm8 C1 /4 ib Shift a 32-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+SAL reg/mem64, 1 D1 /4 Shift a 64-bit register or memory location left 1 bit. 
+SAL reg/mem64, CL D3 /4 Shift a 64-bit register or memory location left the number of bits specified in the CL register. 
+SAL reg/mem64, imm8 C1 /4 ib Shift a 64-bit register or memory location left the number of bits specified by an 8-bit immediate value.
+eflags s s s s s s s s s s s s s m m m m m
+
+SHL reg/mem8, 1 D0 /4 Shift an 8-bit register or memory location by 1 bit. 
+SHL reg/mem8, CL D2 /4 Shift an 8-bit register or memory location left the number of bits specified in the CL register. 
+SHL reg/mem8, imm8 C0 /4 ib Shift an 8-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+SHL reg/mem16, 1 D1 /4 Shift a 16-bit register or memory location left 1 bit. 
+SHL reg/mem16, CL D3 /4 Shift a 16-bit register or memory location left the number of bits specified in the CL register. 
+SHL reg/mem16, imm8 C1 /4 ib Shift a 16-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+SHL reg/mem32, 1 D1 /4 Shift a 32-bit register or memory location left 1 bit. 
+SHL reg/mem32, CL D3 /4 Shift a 32-bit register or memory location left the number of bits specified in the CL register. 
+SHL reg/mem32, imm8 C1 /4 ib Shift a 32-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+SHL reg/mem64, 1 D1 /4 Shift a 64-bit register or memory location left 1 bit. 
+SHL reg/mem64, CL D3 /4 Shift a 64-bit register or memory location left the number of bits specified in the CL register. 
+SHL reg/mem64, imm8 C1 /4 ib Shift a 64-bit register or memory location left the number of bits specified by an 8-bit immediate value. 
+eflags s s s s s s s s s m s s s m m u m m
+
+SAR reg/mem8, 1 D0 /7 Shift a signed 8-bit register or memory operand right 1 bit. 
+SAR reg/mem8, CL D2 /7 Shift a signed 8-bit register or memory operand right the number of bits specified in the CL register. 
+SAR reg/mem8, imm8 C0 /7 ib Shift a signed 8-bit register or memory operand right the number of bits specified by an 8-bit immediate value. 
+SAR reg/mem16, 1 D1 /7 Shift a signed 16-bit register or memory operand right 1 bit. 
+SAR reg/mem16, CL D3 /7 Shift a signed 16-bit register or memory operand right the number of bits specified in the CL register. 
+SAR reg/mem16, imm8 C1 /7 ib Shift a signed 16-bit register or memory operand right the number of bits specified by an 8-bit immediate value. 
+SAR reg/mem32, 1 D1 /7 Shift a signed 32-bit register or memory location 1 bit. 
+SAR reg/mem32, CL D3 /7 Shift a signed 32-bit register or memory location right the number of bits specified in the CL register.
+SAR reg/mem32, imm8 C1 /7 ib Shift a signed 32-bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+SAR reg/mem64, 1 D1 /7 Shift a signed 64-bit register or memory location right 1 bit. 
+SAR reg/mem64, CL D3 /7 Shift a signed 64-bit register or memory location right the number of bits specified in the CL register. 
+SAR reg/mem64, imm8 C1 /7 ib Shift a signed 64-bit register or memory location right the number of bits specified by an 8-bit immediate value. 
+eflags s s s s s s s s s m s s s m m u m m
+
+SBB AL, imm8 1C ib Subtract an immediate 8-bit value from the AL register with borrow. 
+SBB AX, imm16 1D iw Subtract an immediate 16-bit value from the AX register with borrow. 
+SBB EAX, imm32 1D id Subtract an immediate 32-bit value from the EAX register with borrow. 
+SBB RAX, imm32 1D id Subtract a sign-extended immediate 32-bit value from the RAX register with borrow. 
+SBB reg/mem8, imm8 80 /3 ib Subtract an immediate 8-bit value from an 8-bit register or memory location with borrow. 
+SBB reg/mem16, imm16 81 /3 iw Subtract an immediate 16-bit value from a 16-bit register or memory location with borrow. 
+SBB reg/mem32, imm32 81 /3 id Subtract an immediate 32-bit value from a 32-bit register or memory location with borrow. 
+SBB reg/mem64, imm32 81 /3 id Subtract a sign-extended immediate 32-bit value from a 64-bit register or memory location with borrow. 
+SBB reg/mem16, imm8 83 /3 ib Subtract a sign-extended 8-bit immediate value from a 16-bit register or memory location with borrow. 
+SBB reg/mem32, imm8 83 /3 ib Subtract a sign-extended 8-bit immediate value from a 32-bit register or memory location with borrow. 
+SBB reg/mem64, imm8 83 /3 ib Subtract a sign-extended 8-bit immediate value from a 64-bit register or memory location with borrow. 
+SBB reg/mem8, reg8 18 /r Subtract the contents of an 8-bit register from an 8-bit register or memory location with borrow. 
+SBB reg/mem16, reg16 19 /r Subtract the contents of a 16-bit register from a 16-bit register or memory location with borrow.
+SBB reg/mem32, reg32 19 /r Subtract the contents of a 32-bit register from a 32-bit register or memory location with borrow. 
+SBB reg/mem64, reg64 19 /r Subtract the contents of a 64-bit register from a 64-bit aregister or memory location with borrow. 
+SBB reg8, reg/mem8 1A /r Subtract the contents of an 8-bit register or memory location from the contents of an 8-bit register with borrow. 
+SBB reg16, reg/mem16 1B /r Subtract the contents of a 16-bit register or memory location from the contents of a 16-bit register with borrow. 
+SBB reg32, reg/mem32 1B /r Subtract the contents of a 32-bit register or memory location from the contents of a 32-bit register with borrow. 
+SBB reg64, reg/mem64 1B /r Subtract the contents of a 64-bit register or memory location from the contents of a 64-bit register with borrow. 
+eflags s s s s s s s s s m s s s m m m m m
+
+SCAS mem8 AE Compare the contents of the AL register with the byte at ES:rDI, and then increment or decrement rDI. 
+SCAS mem16 AF Compare the contents of the AX register with the word at ES:rDI, and then increment or decrement rDI. 
+SCAS mem32 AF Compare the contents of the EAX register with the doubleword at ES:rDI, and then increment or decrement rDI. 
+SCAS mem64 AF Compare the contents of the RAX register with the quadword at ES:rDI, and then increment or decrement rDI. 
+SCASB AE Compare the contents of the AL register with the byte at ES:rDI, and then increment or decrement rDI. 
+SCASW AF Compare the contents of the AX register with the word at ES:rDI, and then increment or decrement rDI.Compare the contents of the AX register with the
+SCASD AF Compare the contents of the EAX register with the doubleword at ES:rDI, and then increment or decrement rDI. 
+SCASQ AF Compare the contents of the RAX register with the quadword at ES:rDI, and then increment or decrement rDI. 
+eflags s s s s s s s s s m s s s m m m m m
+
+SETO reg/mem8 0F 90 /0 Set byte if overflow (OF = 1). 
+SETNO reg/mem8 0F 91 /0 Set byte if not overflow (OF = 0). 
+SETC reg/mem8 0F 92 /0 Set byte if carry (CF = 1).  (SETB, SETNAE)
+SETNC reg/mem8 0F 93 /0 Set byte if above or equal (CF = 0). (SETAE,SETNB)
+SETE reg/mem8 0F 94 /0 Set byte if equal (ZF = 1).  (SETZ)
+SETNE reg/mem8 0F 95 /0 Set byte if not equal (ZF = 0). (SETNZ)
+SETBE reg/mem8 0F 96 /0 Set byte if below or equal (CF = 1 or ZF = 1). 
+SETNA reg/mem8 0F 96 /0 Set byte if not above (CF = 1 or ZF = 1). 
+SETA reg/mem8 0F 97 /0  Set byte if above (CF = 0 and ZF = 0). (SETNBE)
+SETS reg/mem8 0F 98 /0 Set byte if sign (SF = 1). 
+SETNS reg/mem8 0F 99 /0 Set byte if not sign (SF = 0). 
+SETPE reg/mem8 0F 9A /0  Set byte if parity even (PF = 1). (SETP)
+SETPO reg/mem8 0F 9B /0  Set byte if parity odd (PF = 0).Set byte if below (CF = 1). (SETNP)
+SETNGE reg/mem8 0F 9C /0 Set byte if not greater or equal (SF <> OF). (SETL)
+SETGE reg/mem8 0F 9D /0  Set byte if greater or equal (SF = OF). (SETNL)
+SETNG reg/mem8 0F 9E /0  Set byte if not greater (ZF = 1 or SF <> OF). (SETLE)
+SETG reg/mem8 0F 9F /0  Set byte if greater (ZF = 0 and SF = OF). (SETNLE)
+eflags s s s s s s s s s s s s s s s s s s 
+
+SFENCE 0F AE F8 Force strong ordering of (serialized) store operations. 
+eflags s s s s s s s s s m s s s m m u m m
+
+SHLD reg/mem16, reg16, imm8 0F A4 /r ib  Shift bits of a 16-bit destination register or memory operand to the left the number of bits specified in an 8- bit immediate value, while shifting in bits from the second operand. 
+SHLD reg/mem16, reg16, CL 0F A5 /r Shift bits of a 16-bit destination register or memory operand to the left the number of bits specified in the CL register, while shifting in bits from the second operand. 
+SHLD reg/mem32, reg32, imm8 0F A4 /r ib Shift bits of a 32-bit destination register or memory operand to the left the number of bits specified in an 8- bit immediate value, while shifting in bits from the second operand. 
+SHLD reg/mem32, reg32, CL 0F A5 /r Shift bits of a 32-bit destination register or memory operand to the left the number of bits specified in the CL register, while shifting in bits from the second operand. 
+SHLD reg/mem64, reg64, imm8 0F A4 /r ib Shift bits of a 64-bit destination register or memory operand to the left the number of bits specified in an 8- bit immediate value, while shifting in bits from the second operand. 
+SHLD reg/mem64, reg64, CL 0F A5 /r Shift bits of a 64-bit destination register or memory operand to the left the number of bits specified in the CL register, while shifting in bits from the second operand.
+SHR reg/mem8, 1 D0 /5 Shift an 8-bit register or memory operand right 1 bit. 
+SHR reg/mem8, CL D2 /5 Shift an 8-bit register or memory operand right the number of bits specified in the CL register. 
+SHR reg/mem8, imm8 C0 /5 ib Shift an 8-bit register or memory operand right the number of bits specified by an 8-bit immediate value. 
+SHR reg/mem16, 1 D1 /5 Shift a 16-bit register or memory operand right 1 bit. 
+SHR reg/mem16, CL D3 /5 Shift a 16-bit register or memory operand right the number of bits specified in the CL register. 
+SHR reg/mem16, imm8 C1 /5 ib Shift a 16-bit register or memory operand right the number of bits specified by an 8-bit immediate value. 
+SHR reg/mem32, 1 D1 /5 Shift a 32-bit register or memory operand right 1 bit. 
+SHR reg/mem32, CL D3 /5 Shift a 32-bit register or memory operand right the number of bits specified in the CL register. 
+SHR reg/mem32, imm8 C1 /5 ib Shift a 32-bit register or memory operand right the number of bits specified by an 8-bit immediate value. 
+SHR reg/mem64, 1 D1 /5 Shift a 64-bit register or memory operand right 1 bit. 
+SHR reg/mem64, CL D3 /5 Shift a 64-bit register or memory operand right the number of bits specified in the CL register. 
+SHR reg/mem64, imm8 C1 /5 ib Shift a 64-bit register or memory operand right the number of bits specified by an 8-bit immediate value.
+eflags s s s s s s s s s m s s s m m u m m
+
+SHRD reg/mem16, reg16, imm8 0F AC /r ib Shift bits of a 16-bit destination register or memory operand to the right the number of bits specified in an 8- bit immediate value, while shifting in bits from the second operand. 
+SHRD reg/mem16, reg16, CL 0F AD /r Shift bits of a 16-bit destination register or memory operand to the right the number of bits specified in the CL register, while shifting in bits from the second operand. 
+SHRD reg/mem32, reg32, imm8 0F AC /r ib Shift bits of a 32-bit destination register or memory operand to the right the number of bits specified in an 8- bit immediate value, while shifting in bits from the second operand. 
+SHRD reg/mem32, reg32, CL 0F AD /r Shift bits of a 32-bit destination register or memory operand to the right the number of bits specified in the CL register, while shifting in bits from the second operand. 
+SHRD reg/mem64, reg64, imm8 0F AC /r ib Shift bits of a 64-bit destination register or memory operand to the right the number of bits specified in an 8- bit immediate value, while shifting in bits from the second operand. 
+SHRD reg/mem64, reg64, CL 0F AD /r Shift bits of a 64-bit destination register or memory operand to the right the number of bits specified in the CL register, while shifting in bits from the second operand.
+eflags s s s s s s s s s m s s s m m u m m
+
+STC F9 Set the carry flag (CF) to one. 
+eflags s s s s s s s s s s s s s s s s s 1
+
+STD FD Set the direction flag (DF) to one. 
+eflags s s s s s s s s s s 1 s s s s s s s
+
+STOS mem8 AA Store the contents of the AL register to ES:rDI, and then increment or decrement rDI. 
+STOS mem16 AB Store the contents of the AX register to ES:rDI, and then increment or decrement rDI. 
+STOS mem32 AB Store the contents of the EAX register to ES:rDI, and then increment or decrement rDI. 
+STOS mem64 AB Store the contents of the RAX register to ES:rDI, and then increment or decrement rDI. 
+STOSB AA Store the contents of the AL register to ES:rDI, and then increment or decrement rDI. 
+STOSW AB Store the contents of the AX register to ES:rDI, and then increment or decrement rDI. 
+STOSD AB Store the contents of the EAX register to ES:rDI, and then increment or decrement rDI. 
+STOSQ AB Store the contents of the RAX register to ES:rDI, and then increment or decrement rDI.
+eflags s s s s s s s s s s s s s s s s s s
+
+SUB AL, imm8 2C ib Subtract an immediate 8-bit value from the AL register and store the result in AL. 
+SUB AX, imm16 2D iw Subtract an immediate 16-bit value from the AX register and store the result in AX. 
+SUB EAX, imm32 2D id Subtract an immediate 32-bit value from the EAX register and store the result in EAX. 
+SUB RAX, imm32 2D id Subtract a sign-extended immediate 32-bit value from the RAX register and store the result in RAX. 
+SUB reg/mem8, imm8 80 /5 ib Subtract an immediate 8-bit value from an 8-bit destination register or memory location. 
+SUB reg/mem16, imm16 81 /5 iw Subtract an immediate 16-bit value from a 16-bit destination register or memory location. 
+SUB reg/mem32, imm32 81 /5 id Subtract an immediate 32-bit value from a 32-bit destination register or memory location. 
+SUB reg/mem64, imm32 81 /5 id Subtract a sign-extended immediate 32-bit value from a 64-bit destination register or memory location. 
+SUB reg/mem16, imm8 83 /5 ib Subtract a sign-extended immediate 8-bit value from a 16-bit register or memory location. 
+SUB reg/mem32, imm8 83 /5 ib Subtract a sign-extended immediate 8-bit value from a 32-bit register or memory location. 
+SUB reg/mem64, imm8 83 /5 ib Subtract a sign-extended immediate 8-bit value from a 64-bit register or memory location. 
+SUB reg/mem8, reg8 28 /r Subtract the contents of an 8-bit register from an 8-bit destination register or memory location. 
+SUB reg/mem16, reg16 29 /r Subtract the contents of a 16-bit register from a 16-bit destination register or memory location. 
+SUB reg/mem32, reg32 29 /r Subtract the contents of a 32-bit register from a 32-bit destination register or memory location. 
+SUB reg/mem64, reg64 29 /r Subtract the contents of a 64-bit register from a 64-bit destination register or memory location.
+SUB reg8, reg/mem8 2A /r Subtract the contents of an 8-bit register or memory operand from an 8-bit destination register. 
+SUB reg16, reg/mem16 2B /r Subtract the contents of a 16-bit register or memory operand from a 16-bit destination register. 
+SUB reg32, reg/mem32 2B /r Subtract the contents of a 32-bit register or memory operand from a 32-bit destination register. 
+SUB reg64, reg/mem64 2B /r Subtract the contents of a 64-bit register or memory operand from a 64-bit destination register. 
+eflags s s s s s s s s s m s s s m m m m m
+
+TEST AL, imm8 A8 ib AND an immediate 8-bit value with the contents of the AL register and set rFLAGS to reflect the result. 
+TEST AX, imm16 A9 iw AND an immediate 16-bit value with the contents of the AX register and set rFLAGS to reflect the result. 
+TEST EAX, imm32 A9 id AND an immediate 32-bit value with the contents of the EAX register and set rFLAGS to reflect the result. 
+TEST RAX, imm32 A9 id AND a sign-extended immediate 32-bit value with the contents of the RAX register and set rFLAGS to reflect the result. 
+TEST reg/mem8, imm8 F6 /0 ib AND an immediate 8-bit value with the contents of an 8- bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem16, imm16 F7 /0 iw AND an immediate 16-bit value with the contents of a 16-bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem32, imm32 F7 /0 id AND an immediate 32-bit value with the contents of a 32-bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem64, imm32 F7 /0 id AND a sign-extended immediate32-bit value with the contents of a 64-bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem8, reg8 84 /r AND the contents of an 8-bit register with the contents of an 8-bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem16, reg16 85 /r AND the contents of a 16-bit register with the contents of a 16-bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem32, reg32 85 /r AND the contents of a 32-bit register with the contents of a 32-bit register or memory operand and set rFLAGS to reflect the result. 
+TEST reg/mem64, reg64 85 /r AND the contents of a 64-bit register with the contents of a 64-bit register or memory operand and set rFLAGS to reflect the result.the result. 
+eflags s s s s s s s s s 0 s s s m m u m 0
+
+XADD reg/mem8, reg8 0F C0 /r contents of an 8-bit destination register or memory operand and load their sum into the destination. 
+XADD reg/mem16, reg16 0F C1 /r Exchange the contents of a 16-bit register with the contents of a 16-bit destination register or memory operand and load their sum into the destination. 
+XADD reg/mem32, reg32 0F C1 /r Exchange the contents of a 32-bit register with the contents of a 32-bit destination register or memory operand and load their sum into the destination. 
+XADD reg/mem64, reg64 0F C1 /r Exchange the contents of a 64-bit register with the contents of a 64-bit destination register or memory operand and load their sum into the destination. 
+eflags s s s s s s s s s m s s s m m m m m
+
+XCHG AX, reg16 90 +rw Exchange the contents of the AX register with the contents of a 16-bit register. 
+XCHG reg16, AX 90 +rw Exchange the contents of a 16-bit register with the contents of the AX register. 
+XCHG EAX, reg32 90 +rd Exchange the contents of the EAX register with the contents of a 32-bit register. 
+XCHG reg32, EAX 90 +rd Exchange the contents of a 32-bit register with the contents of the EAX register. 
+XCHG RAX, reg64 90 +rq Exchange the contents of the RAX register with the contents of a 64-bit register. 
+XCHG reg64, RAX 90 +rq Exchange the contents of a 64-bit register with the contents of the RAX register. 
+XCHG reg/mem8, reg8 86 /r Exchange the contents of an 8-bit register with the contents of an 8-bit register or memory operand. 
+XCHG reg8, reg/mem8 86 /r Exchange the contents of an 8-bit register or memory operand with the contents of an 8-bit register. 
+XCHG reg/mem16, reg16 87 /r Exchange the contents of a 16-bit register with the contents of a 16-bit register or memory operand. 
+XCHG reg16, reg/mem16 87 /r Exchange the contents of a 16-bit register or memory operand with the contents of a 16-bit register. 
+XCHG reg/mem32, reg32 87 /r Exchange the contents of a 32-bit register with the contents of a 32-bit register or memory operand. 
+XCHG reg32, reg/mem32 87 /r Exchange the contents of a 32-bit register or memory operand with the contents of a 32-bit register. 
+XCHG reg/mem64, reg64 87 /r Exchange the contents of a 64-bit register with the contents of a 64-bit register or memory operand. 
+XCHG reg64, reg/mem64 87 /r Exchange the contents of a 64-bit register or memory operand with the contents of a 64-bit register.
+eflags s s s s s s s s s s s s s s s s s s
+
+XLAT mem8 D7 Set AL to the contents of DS:[rBX + unsigned AL]. 
+XLATB D7 Set AL to the contents of DS:[rBX + unsigned AL].
+eflags s s s s s s s s s s s s s s s s s s
+
+XOR AL, imm8 34 ib XOR the contents of AL with an immediate 8-bit operand and store the result in AL. 
+XOR AX, imm16 35 iw XOR the contents of AX with an immediate 16-bit operand and store the result in AX. 
+XOR EAX, imm32 35 id XOR the contents of EAX with an immediate 32-bit operand and store the result in EAX. 
+XOR RAX, imm32 35 id XOR the contents of RAX with a sign-extended immediate 32-bit operand and store the result in RAX. 
+XOR reg/mem8, imm8 80 /6 ib XOR the contents of an 8-bit destination register or memory operand with an 8-bit immediate value and store the result in the destination. 
+XOR reg/mem16, imm16 81 /6 iw XOR the contents of a 16-bit destination register or memory operand with a 16-bit immediate value and store the result in the destination. 
+XOR reg/mem32, imm32 81 /6 id XOR the contents of a 32-bit destination register or memory operand with a 32-bit immediate value and store the result in the destination. 
+XOR reg/mem64, imm32 81 /6 id XOR the contents of a 64-bit destination register or memory operand with a sign-extended 32-bit immediate value and store the result in the destination. 
+XOR reg/mem16, imm8 83 /6 ib XOR the contents of a 16-bit destination register or memory operand with a sign-extended 8-bit immediate value and store the result in the destination.
+XOR reg/mem32, imm8 83 /6 ib XOR reg/mem32, imm8 83 /6 ib XOR the contents of a 32-bit destination register or memory operand with a sign-extended 8-bit immediate value and store the result in the destination. 
+XOR reg/mem64, imm8 83 /6 ib XOR the contents of a 64-bit destination register or memory operand with a sign-extended 8-bit immediate value and store the result in the destination. 
+XOR reg/mem8, reg8 30 /r XOR the contents of an 8-bit destination register or memory operand with the contents of an 8-bit register and store the result in the destination. 
+XOR reg/mem16, reg16 31 /r XOR the contents of a 16-bit destination register or memory operand with the contents of a 16-bit register and store the result in the destination. 
+XOR reg/mem32, reg32 31 /r XOR the contents of a 32-bit destination register or memory operand with the contents of a 32-bit register and store the result in the destination. 
+XOR reg/mem64, reg64 31 /r XOR the contents of a 64-bit destination register or memory operand with the contents of a 64-bit register and store the result in the destination. 
+XOR reg8, reg/mem8 32 /r XOR the contents of an 8-bit destination register with the contents of an 8-bit register or memory operand and store the results in the destination. 
+XOR reg16, reg/mem16 33 /r XOR the contents of a 16-bit destination register with the contents of a 16-bit register or memory operand and store the results in the destination. 
+XOR reg32, reg/mem32 33 /r XOR the contents of a 32-bit destination register with the contents of a 32-bit register or memory operand and store the results in the destination. 
+XOR reg64, reg/mem64 33 /r XOR the contents of a 64-bit destination register with the contents of a 64-bit register or memory operand and store the results in the destination. 
+eflags s s s s s s s s s 0 s s s m m u m 0
+
+HLT F4 Halt instruction execution. 
+eflags s s s s s s s s s s s s s s s s s s
+
+INT3 CC Trap to debugger at Interrupt 3.
+SYSCALL 0F 05 Call operating system.Related Instructions 
+SYSENTER 0F 34 Call operating system.
+eflags x x x x x x x x x x x x x x x x x x
