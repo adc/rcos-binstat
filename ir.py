@@ -2,8 +2,7 @@
 Lieutenant Dan:   I'm here to try out my sea legs.
 Forrest Gump:     But you ain't got no legs, Lieutenant Dan
 
-This module contains IR abstractions for
-anything IR. 
+This module contains IR abstractions for anything IR. 
 """ 
 
 ##########memory abstractions
@@ -36,7 +35,7 @@ class segment:
     if start > self.end+self.base or start < self.start + self.base \
      or stop > self.end+self.base or stop < self.start + self.base:
       raise IndexError("memory address out of range %x-%x"%(start,stop))
-    return self.data[start-self.start: stop-self.start]
+    return self.data[start-self.start+self.base: stop-self.start+self.base]
 
 class memory:
   def __init__(self, segments=[]):
@@ -83,23 +82,84 @@ class alias_name:
     return self.names[0]
 
 class register:
-  def __init__(self, name, *aliases, **var):
-    self.name = name
-    self.aliases = [name]+list(aliases)
-    self.size = 4
+  def __init__(self, *names, **var):
+    #ir.register("eax:32-0", "ax:16-0", "ah:16-8", "al:7-0")
+    self.aliases = {}
     self.callee_save = 0
-
+    self.register_name = names[0]
+    if ':' in self.register_name:
+      self.register_name = self.register_name[:self.register_name.find(':')]
     if 'size' in var:
       self.size = var['size']
     if 'callee_save' in var:
       self.callee_save = 1
+    
+    #find bounds
+    upper = 0
+    lower = 1000
+    for name in names:
+      if ':' not in name:
+        continue
+      else:
+        if '-' in name:
+          top, bottom = name[name.find(":")+1:].split('-')
+        else:
+          top = bottom = name[name.find(':')+1:]
+        top = int(top)
+        bottom = int(bottom)
+        if top > upper:
+          upper = top
+        if bottom < lower:
+          lower = bottom
+
+    self.bitmax = upper
+    self.bitmin = lower
+
+    for name in names:
+      if ':' in name:
+        if '-' in name:
+          top, bottom = name[name.find(":")+1:].split('-')
+        else:
+          top = bottom = name[name.find(':')+1:]
+        top = int(top)
+        bottom = int(bottom)
+        name = name[:name.find(':')]
+      else:
+        #assume full register
+        top = self.bitmax
+        bottom = self.bitmin
         
+      self.aliases[name] = {'min': bottom, 'max': top, 'name': name}
+    
+    self.size = self.bitmax/8
+
+  def __contains__(self, name):
+    return name in self.aliases.keys()
+    
+  """
+  TODO: register aliasing. on x86 the register
+  rax is the 64-bit version. and eax, ax, ah, 
+  and al are aliases for portions of it.
+  This poses some design issues for a translator.
+  """
+  
+  
 class register_operand(operand):
-  def __init__(self, register):
+  def __init__(self, name, register):
     operand.__init__(self,"register")
     self.register = register
-    self.register_name = alias_name(register.aliases)
-    self.size = register.size
+    self.bitmin = register.aliases[name]['min']
+    self.bitmax = register.aliases[name]['max']
+    self.size = (self.bitmax-self.bitmin)/8
+    #pull out all registers with the same size
+    reglist = register.aliases.keys()
+    xlist = []
+    for y in reglist:
+      if register.aliases[y]['min'] == self.bitmin and register.aliases[y]['max'] == self.bitmax:
+        xlist.append(y) 
+
+    xlist = [name] + xlist
+    self.register_name = alias_name(xlist)
   
   def __repr__(self):
     return repr(self.register_name)
@@ -127,17 +187,25 @@ class constant_operand(operand):
 
     #make sure it fits inside of 'size' bytes
     if signed:
+      #truncate values to fit size bytes and make sure
+      #they are negative if sign bit set
       if value < 0:
         value = -(value & (256**size)/2)
-      elif value > (256**size-1)/2:
+      elif value > ((256**size)-1)/2:
         value = (value % 256**size) - 256**size
     else:
-      value = value & (256**size-1)
-      
+      #truncate values to fit size bytes
+      value = value & ((256**size)-1)    
+    
     self.value = value
 
   def __repr__(self):
     return str(self.value)
+
+def sext16(value):
+  if value & 0x8000:
+    return value + 0xffff0000
+  return value
 
 INST_MATH = 0
 INST_DATA = 1
@@ -151,6 +219,7 @@ class instruction:
     self.address = 0
     self.operands = []
     self.result = [] #changes made to state by instructions, these are described by math
+    self.annotation = ""
 
 class operation(instruction):
   def __init__(self,*ops,**vals):
@@ -163,7 +232,7 @@ class operation(instruction):
     #deal w/ known operators here
   
   def __repr__(self):
-    return repr(self.ops)
+    return repr(self.ops)+"     "+self.annotation
 
 
 ###### misc instructions
@@ -185,7 +254,9 @@ class native_instruction(instruction):
 ###### data instructions
 
 #moves register to memory and back
+
 class load(instruction):
+  """source is implicit, it is the result of the previous operation"""
   def __init__(self, dest_op, src_op=None, size=4, signed=1):
     instruction.__init__(self, "load")
     self.signed = signed
@@ -194,9 +265,10 @@ class load(instruction):
     self.src = src_op
   
   def __repr__(self):
-    return "LOAD %s <- %s"%(self.dest,self.src)
+    return "LOAD %s"%(self.dest)+"     "+self.annotation
     
 class store(instruction):
+  """destination is implicit, it is the result of the previous operation"""
   def __init__(self, dest_op, src_op=None, size=4, signed=1):
     instruction.__init__(self, "store")
     self.signed = signed
@@ -205,7 +277,7 @@ class store(instruction):
     self.src = src_op
 
   def __repr__(self):
-    return "STORE %s <- %s"%(self.dest,self.src)
+    return "STORE %s"%(self.dest)+"     "+self.annotation
 
     
 ###### flow instructions and abstractions
@@ -217,9 +289,9 @@ class jump(instruction):
   
   def __repr__(self):
     if isinstance(self.dest, constant_operand):
-      return "JUMP loc_%x"%self.dest.value
+      return "JUMP loc_%x"%self.dest.value+"     "+self.annotation
     else:
-      return "JUMP %s"%repr(self.dest)
+      return "JUMP %s"%repr(self.dest)+"     "+self.annotation
       
     
 class branch_true(instruction):
@@ -230,9 +302,9 @@ class branch_true(instruction):
   
   def __repr__(self):
     if self.relative:
-      return "BRANCH loc_"+hex(int(repr(self.dest))+int(repr(self.address)))
+      return "BRANCH loc_"+hex(int(repr(self.dest))+int(repr(self.address)))+"     "+self.annotation
     else:
-      return "BRANCH loc_"+repr(self.dest)
+      return "BRANCH loc_"+hex(self.dest.value)+"     "+self.annotation
 
 #######function abstractions
 #build an activation record
@@ -240,20 +312,16 @@ class call(instruction):
   def __init__(self, op, relative=1):
     instruction.__init__(self, "call")
     self.dest = op
-    
-    if isinstance(op, constant_operand):
-      self.relative = relative
-    else:
-      self.relative = 0
+    self.relative = relative
 
   def __repr__(self):
     if isinstance(self.dest, constant_operand):
       if self.relative:
-        return "CALLR loc_"+hex(int(repr(self.dest))+int(repr(self.address)))
+        return "CALLR loc_"+hex(int(repr(self.dest))+int(repr(self.address)))+"     "+self.annotation
       else:
-        return "CALL loc_"+repr(self.dest)
+        return "CALL loc_"+hex(self.dest.value)+"     "+self.annotation
     else:
-      return "CALL %s"%self.dest
+      return "CALL %s"%self.dest+"     "+self.annotation
 
 class library_function(operand):
   def __init__(self, address, name):
@@ -267,9 +335,10 @@ class ret(instruction):
   def __init__(self, op):
     instruction.__init__(self, "ret")
     self.dest = op
+    self.annotation = str(op)
 
   def __repr__(self):
-    return "RET"
+    return "RET"+"     "+self.annotation
 ##########################
 #heap abstractions
 

@@ -15,7 +15,6 @@ eflags s s s s s s s s s u s s s u u m u m
 ADC AL, imm8 14 ib Add imm8 to AL + CF. 
 ADC AX, imm16 15 iw Add imm16 to AX + CF. 
 ADC EAX, imm32 15 id Add imm32 to EAX + CF. 
-ADC RAX, imm32 15 id Add sign-extended imm32 to RAX + CF. 
 ADC reg/mem8, imm8 80 /2 ib Add imm8 to reg/mem8 + CF. 
 ADC reg/mem16, imm16 81 /2 iw Add imm16 to reg/mem16 + CF. 
 ADC reg/mem32, imm32 81 /2 id Add imm32 to reg/mem32 + CF. 
@@ -36,7 +35,6 @@ eflags s s s s s s s s s m s s s m m m m m
 ADD AL, imm8 04 ib Add imm8 to AL. 
 ADD AX, imm16 05 iw Add imm16 to AX. 
 ADD EAX, imm32 05 id Add imm32 to EAX. 
-ADD RAX, imm32 05 id Add sign-extended imm32 to RAX. 
 ADD reg/mem8, imm8 80 /0 ib Add imm8 to reg/mem8. 
 ADD reg/mem16, imm16 81 /0 iw Add imm16 to reg/mem16 
 ADD reg/mem32, imm32 81 /0 id Add imm32 to reg/mem32. 
@@ -57,7 +55,6 @@ eflags s s s s s s s s s m s s s m m m m m
 AND AL, imm8 24 ib AND the contents of AL with an immediate 8-bit value and store the result in AL. 
 AND AX, imm16 25 iw AND the contents of AX with an immediate 16-bit value and store the result in AX. 
 AND EAX, imm32 25 id AND the contents of EAX with an immediate 32-bit value and store the result in EAX. 
-AND RAX, imm32 25 id AND the contents of RAX with a sign-extended immediate 32-bit value and store the result in RAX. 
 AND reg/mem8, imm8 80 /4 ib AND the contents of reg/mem8 with imm8. 
 AND reg/mem16, imm16 81 /4 iw AND the contents of reg/mem16 with imm16. 
 AND reg/mem32, imm32 81 /4 id AND the contents of reg/mem32 with imm32. 
@@ -195,7 +192,6 @@ eflags s s s s s s s s s s s s s s s s s s
 CMP AL, imm8 3C ib Compare an 8-bit immediate value with the contents of the AL register. 
 CMP AX, imm16 3D iw Compare a 16-bit immediate value with the contents of the AX register. 
 CMP EAX, imm32 3D id Compare a 32-bit immediate value with the contents of the EAX register. 
-CMP RAX, imm32 3D id Compare a 32-bit immediate value with the contents of the RAX register. 
 CMP reg/mem8, imm8 80 /7 ib Compare an 8-bit immediate value with the contents of an 8-bit register or memory operand. 
 CMP reg/mem16, imm16 81 /7 iw Compare a 16-bit immediate value with the contents of a 16-bit register or memory operand. 
 CMP reg/mem32, imm32 81 /7 id Compare a 32-bit immediate value with the contents of a 32-bit register or memory operand. 
@@ -264,10 +260,10 @@ IDIV reg/mem32 F7 /7 Perform signed division of EDX:EAX by the contents of a 32-
 IDIV reg/mem64 F7 /7 Perform signed division of RDX:RAX by the contents of a 64-bit register or memory location and store the quotient in RAX and the remainder in RDX.
 eflags s s s s s s s s s s s s s s m s s s 
 
-IMUL reg/mem8 F6 /5 IMUL reg/mem8 F6 /5 Multiply the contents of AL by the contents of an 8-bit memory or register operand and put the signed result in AX. 
-IMUL reg/mem16 F7 /5 Multiply the contents of AX by the contents of a 16-bit memory or register operand and put the signed result in DX:AX. 
-IMUL reg/mem32 F7 /5 Multiply the contents of EAX by the contents of a 32-bit memory or register operand and put the signed result in EDX:EAX. 
-IMUL reg/mem64 F7 /5 Multiply the contents of RAX by the contents of a 64-bit memory or register operand and put the signed result in RDX:RAX. 
+IMUL AL, reg/mem8 F6 /5 IMUL reg/mem8 F6 /5 Multiply the contents of AL by the contents of an 8-bit memory or register operand and put the signed result in AX. 
+IMUL AX, reg/mem16 F7 /5 Multiply the contents of AX by the contents of a 16-bit memory or register operand and put the signed result in DX:AX. 
+IMUL EAX, reg/mem32 F7 /5 Multiply the contents of EAX by the contents of a 32-bit memory or register operand and put the signed result in EDX:EAX. 
+IMUL RAX, reg/mem64 F7 /5 Multiply the contents of RAX by the contents of a 64-bit memory or register operand and put the signed result in RDX:RAX. 
 IMUL reg16, reg/mem16 0F AF /r Multiply the contents of a 16-bit destination register by the contents of a 16-bit register or memory operand and put the signed result in the 16-bit destination register. 
 IMUL reg32, reg/mem32 0F AF /r Multiply the contents of a 32-bit destination register by the contents of a 32-bit register or memory operand and put the signed result in the 32-bit destination register. 
 IMUL reg64, reg/mem64 0F AF /r Multiply the contents of a 64-bit destination register by the contents of a 64-bit register or memory operand and put the signed result in the 64-bit destination register. 
@@ -320,47 +316,21 @@ JB rel16off 0F 82 cw
 JB rel32off 0F 82 cd Jump if below (CF = 1).
 eflags s s s s s s s s s s s s s s s s s s 
 
-JC rel8off 72 cb 
-JC rel16off 0F 82 cw Jump if carry (CF = 1). 
-JC rel32off 0F 82 cd
-eflags s s s s s s s s s s s s s s s s s s 
-
-JNAE rel8off 72 cb 
-JNAE rel16off 0F 82 cw 
-JNAE rel32off 0F 82 cd Jump if not above or equal (CF = 1). 
-JNB rel8off 73 cb 
-JNB rel16off 0F 83 cw 
-JNB rel32off 0F 83 cd Jump if not below (CF = 0). 
 JNC rel8off 73 cb 
 JNC rel16off 0F 83 cw 
 JNC rel32off 0F 83 cd Jump if not carry (CF = 0). 
-JAE rel8off 73 cb 
-JAE rel16off 0F 83 cw 
-JAE rel32off 0F 83 cd Jump if above or equal (CF = 0). 
 JZ rel8off 74 cb 
-JZ rel16off 0F 84 cw 
+JZ rel16off 0F 84 cw JE rel16off 0F 84 cw 
 JZ rel32off 0F 84 cd Jump if zero (ZF = 1). 
-JE rel8off 74 cb 
-JE rel16off 0F 84 cw 
-JE rel32off 0F 84 cd Jump if equal (ZF = 1). 
-JNZ rel8off 75 cb 
-JNZ rel16off 0F 85 cw 
+JNZ rel8off 75 cb JNE rel8off 75 cb 
+JNZ rel16off 0F 85 cw JNE rel16off 0F 85 cw 
 JNZ rel32off 0F 85 cd Jump if not zero (ZF = 0). 
-JNE rel8off 75 cb 
-JNE rel16off 0F 85 cw 
-JNE rel32off 0F 85 cd Jump if not equal (ZF = 0). 
 JBE rel8off 76 cb 
 JBE rel16off 0F 86 cw 
 JBE rel32off 0F 86 cd Jump if below or equal (CF = 1 or ZF = 1). 
-JNA rel8off 76 cb 
-JNA rel16off 0F 86 cw 
-JNA rel32off 0F 86 cd Jump if not above (CF = 1 or ZF = 1). 
 JNBE rel8off 77 cb 
 JNBE rel16off 0F 87 cw 
-JNBE rel32off 0F 87 cd Jump if not below or equal (CF = 0 and ZF = 0). 
-JA rel8off 77 cb 
-JA rel16off 0F 87 cw 
-JA rel32off 0F 87 cd Jump if above (CF = 0 and ZF = 0). 
+JNBE rel32off 0F 87 cd Jump if not below or equal (CF = 0 and ZF = 0).  ; JA
 JS rel8off 78 cb 
 JS rel16off 0F 88 cw 
 JS rel32off 0F 88 cd Jump if sign (SF = 1). 
@@ -369,40 +339,22 @@ JNS rel16off 0F 89 cw
 JNS rel32off 0F 89 cd Jump if not sign (SF = 0). Jump if not above or equal (CF = 1). 
 JP rel8off 7A cb 
 JP rel16off 0F 8A cw 
-JP rel32off 0F 8A cd Jump if parity (PF = 1). 
-JPE rel8off 7A cb 
-JPE rel16off 0F 8A cw 
-JPE rel32off 0F 8A cd Jump if parity even (PF = 1). 
+JP rel32off 0F 8A cd Jump if parity (PF = 1). ; JPE
 JNP rel8off 7B cb 
 JNP rel16off 0F 8B cw 
-JNP rel32off 0F 8B cd Jump if not parity (PF = 0). 
-JPO rel8off 7B cb 
-JPO rel16off 0F 8B cw 
-JPO rel32off 0F 8B cd Jump if parity odd (PF = 0). 
+JNP rel32off 0F 8B cd Jump if not parity (PF = 0). ; JPO
 JL rel8off 7C cb 
 JL rel16off 0F 8C cw  
-JL rel32off 0F 8C cd Jump if less (SF <> OF). 
-JNGE rel8off 7C cb 
-JNGE rel16off 0F 8C cw 
-JNGE rel32off 0F 8C cd Jump if not greater or equal (SF <> OF). 
+JL rel32off 0F 8C cd Jump if less (SF <> OF).  ; JNGE
 JNL rel8off 7D cb 
 JNL rel16off 0F 8D cw 
-JNL rel32off 0F 8D cd Jump if not less (SF = OF). 
-JGE rel8off 7D cb 
-JGE rel16off 0F 8D cw 
-JGE rel32off 0F 8D cd Jump if greater or equal (SF = OF). 
-JLE rel8off 7E cb 
-JLE rel16off 0F 8E cw 
-JLE rel32off 0F 8E cd Jump if less or equal (ZF = 1 or SF <> OF). 
-JNG rel8off 7E cb 
-JNG rel16off 0F 8E cw 
-JNG rel32off 0F 8E cd Jump if not greater (ZF = 1 or SF <> OF). 
-JNLE rel8off 7F cb 
-JNLE rel16off 0F 8F cw 
-JNLE rel32off 0F 8F cd Jump if not less or equal (ZF = 0 and SF = OF). 
-JG rel8off 7F cb 
+JNL rel32off 0F 8D cd Jump if not less (SF = OF).  ; JGE
+JLE rel8off 7E cb JNG rel8off 7E cb 
+JLE rel16off 0F 8E cw JNG rel16off 0F 8E cw 
+JLE rel32off 0F 8E cd Jump if less or equal (ZF = 1 or SF <> OF). JNG rel32off 0F 8E cd Jump if not greater (ZF = 1 or SF <> OF). 
+JNLE rel8off 7F cb JG rel8off 7F cb 
+JNLE rel32off 0F 8F cd Jump if not less or equal (ZF = 0 and SF = OF). JG rel32off 0F 8F cd Jump if greater (ZF = 0 and SF = OF). 
 JG rel16off 0F 8F cw 
-JG rel32off 0F 8F cd Jump if greater (ZF = 0 and SF = OF). 
 eflags s s s s s s s s s s s s s s s s s s 
 
 JCXZ rel8off E3 cb Jump short if the 16-bit count register (CX) is zero. 
@@ -439,14 +391,12 @@ LSS reg16, mem16:16 0F B2 /r Load SS:reg16 with a far pointer from memory.
 LSS reg32, mem16:32 0F B2 /r Load SS:reg32 with a far pointer from memory.
 eflags s s s s s s s s s s s s s s s s s s 
 
-LEA reg16, mem 8D /r Store effective address in a 16-bit register. 
-LEA reg32, mem 8D /r Store effective address in a 32-bit register. 
-LEA reg64, mem 8D /r Store effective address in a 64-bit register. 
+LEA reg16, mem16 8D /r Store effective address in a 16-bit register. 
+LEA reg32, mem32 8D /r Store effective address in a 32-bit register. 
+LEA reg64, mem64 8D /r Store effective address in a 64-bit register. 
 eflags s s s s s s s s s s s s s s s s s s 
 
-LEAVE C9 Set the stack pointer register SP to the value in the BP register and pop BP. 
-LEAVE C9 Set the stack pointer register ESP to the value in the EBP register and pop EBP. (No prefix for encoding this in 64-bit mode.) 
-LEAVE C9 Set the stack pointer register RSP to the value in the RBP register and pop RBP. 
+LEAVE C9 Set the stack pointer register SP to the value in the BP register and pop BP. LEAVE C9 Set the stack pointer register ESP to the value in the EBP register and pop EBP. (No prefix for encoding this in 64-bit mode.) LEAVE C9 Set the stack pointer register RSP to the value in the RBP register and pop RBP. 
 eflags s s s s s s s s s s s s s s s s s s 
 
 LFENCE 0F AE E8 Force strong ordering of (serialize) load operations. 
@@ -492,7 +442,6 @@ MOV segReg, reg/mem16 8E /r Move the contents of a 16-bit register or memory ope
 MOV AL, moffset8 A0 Move 8-bit data at a specified memory offset to the AL register. 
 MOV AX, moffset16 A1 Move 16-bit data at a specified memory offset to the AX register. 
 MOV EAX, moffset32 A1 Move 32-bit data at a specified memory offset to the EAX register. 
-MOV RAX, moffset64 A1 Move 64-bit data at a specified memory offset to the RAX register. 
 MOV moffset8, AL A2 Move the contents of the AL register to an 8-bit memory offset. 
 MOV moffset16, AX A3 Move the contents of the AX register to a 16-bit memory offset. 
 MOV moffset32, EAX A3 Move the contents of the EAX register to a 32-bit memory offset. 
@@ -559,7 +508,7 @@ NEG reg/mem32 F7 /3 Performs a two’s complement negation on a 32-bit register 
 NEG reg/mem64 F7 /3 Performs a two’s complement negation on a 64-bit register or memory operand. 
 eflags s s s s s s s s s m s s s u u u u m
 
-NOP 90 Performs no operation.
+XCHG AX, reg16 90 +rw Performs no operation.
 eflags s s s s s s s s s m s s s m m m m m
 
 NOT reg/mem8 F6 /2 Complements the bits in an 8-bit register or memory operand. 
@@ -571,7 +520,6 @@ eflags s s s s s s s s s s s s s s s s s s
 OR AL, imm8 0C ib OR the contents of AL with an immediate 8-bit value. 
 OR AX, imm16 0D iw OR the contents of AX with an immediate 16-bit value. 
 OR EAX, imm32 0D id OR the contents of EAX with an immediate 32-bit value. 
-OR RAX, imm32 0D id OR the contents of RAX with a sign-extended immediate 32-bit value. 
 OR reg/mem8, imm8 80 /1 ib OR the contents of an 8-bit register or memory operand and an immediate 8-bit value. 
 OR reg/mem16, imm16 81 /1 iw OR the contents of a 16-bit register or memory operand and an immediate 16-bit value. 
 OR reg/mem32, imm32 81 /1 id OR the contents of a 32-bit register or memory operand and an immediate 32-bit value. 
@@ -783,7 +731,6 @@ eflags s s s s s s s s s m s s s m m u m m
 SBB AL, imm8 1C ib Subtract an immediate 8-bit value from the AL register with borrow. 
 SBB AX, imm16 1D iw Subtract an immediate 16-bit value from the AX register with borrow. 
 SBB EAX, imm32 1D id Subtract an immediate 32-bit value from the EAX register with borrow. 
-SBB RAX, imm32 1D id Subtract a sign-extended immediate 32-bit value from the RAX register with borrow. 
 SBB reg/mem8, imm8 80 /3 ib Subtract an immediate 8-bit value from an 8-bit register or memory location with borrow. 
 SBB reg/mem16, imm16 81 /3 iw Subtract an immediate 16-bit value from a 16-bit register or memory location with borrow. 
 SBB reg/mem32, imm32 81 /3 id Subtract an immediate 32-bit value from a 32-bit register or memory location with borrow. 
@@ -801,14 +748,8 @@ SBB reg32, reg/mem32 1B /r Subtract the contents of a 32-bit register or memory 
 SBB reg64, reg/mem64 1B /r Subtract the contents of a 64-bit register or memory location from the contents of a 64-bit register with borrow. 
 eflags s s s s s s s s s m s s s m m m m m
 
-SCAS mem8 AE Compare the contents of the AL register with the byte at ES:rDI, and then increment or decrement rDI. 
-SCAS mem16 AF Compare the contents of the AX register with the word at ES:rDI, and then increment or decrement rDI. 
-SCAS mem32 AF Compare the contents of the EAX register with the doubleword at ES:rDI, and then increment or decrement rDI. 
-SCAS mem64 AF Compare the contents of the RAX register with the quadword at ES:rDI, and then increment or decrement rDI. 
-SCASB AE Compare the contents of the AL register with the byte at ES:rDI, and then increment or decrement rDI. 
-SCASW AF Compare the contents of the AX register with the word at ES:rDI, and then increment or decrement rDI.Compare the contents of the AX register with the
-SCASD AF Compare the contents of the EAX register with the doubleword at ES:rDI, and then increment or decrement rDI. 
-SCASQ AF Compare the contents of the RAX register with the quadword at ES:rDI, and then increment or decrement rDI. 
+SCASB mem8 AE Compare the contents of the AL register with the byte at ES:rDI, and then increment or decrement rDI.  ;SCAS AE Compare the contents of the AL register with the byte at ES:rDI, and then increment or decrement rDI. SCASW AF Compare the contents of the AX register with the word at ES:rDI, and then increment or decrement rDI.Compare the contents of the AX register with theSCASD AF Compare the contents of the EAX register with the doubleword at ES:rDI, and then increment or decrement rDI. SCASQ AF Compare the contents of the RAX register with the quadword at ES:rDI, and then increment or decrement rDI. 
+SCAS mem16 AF Compare the contents of the AX register with the word at ES:rDI, and then increment or decrement rDI. ; SCAS mem32 AF Compare the contents of the EAX register with the doubleword at ES:rDI, and then increment or decrement rDI. ; SCAS mem64 AF Compare the contents of the RAX register with the quadword at ES:rDI, and then increment or decrement rDI. 
 eflags s s s s s s s s s m s s s m m m m m
 
 SETO reg/mem8 0F 90 /0 Set byte if overflow (OF = 1). 
@@ -880,7 +821,6 @@ eflags s s s s s s s s s s s s s s s s s s
 SUB AL, imm8 2C ib Subtract an immediate 8-bit value from the AL register and store the result in AL. 
 SUB AX, imm16 2D iw Subtract an immediate 16-bit value from the AX register and store the result in AX. 
 SUB EAX, imm32 2D id Subtract an immediate 32-bit value from the EAX register and store the result in EAX. 
-SUB RAX, imm32 2D id Subtract a sign-extended immediate 32-bit value from the RAX register and store the result in RAX. 
 SUB reg/mem8, imm8 80 /5 ib Subtract an immediate 8-bit value from an 8-bit destination register or memory location. 
 SUB reg/mem16, imm16 81 /5 iw Subtract an immediate 16-bit value from a 16-bit destination register or memory location. 
 SUB reg/mem32, imm32 81 /5 id Subtract an immediate 32-bit value from a 32-bit destination register or memory location. 
@@ -901,7 +841,6 @@ eflags s s s s s s s s s m s s s m m m m m
 TEST AL, imm8 A8 ib AND an immediate 8-bit value with the contents of the AL register and set rFLAGS to reflect the result. 
 TEST AX, imm16 A9 iw AND an immediate 16-bit value with the contents of the AX register and set rFLAGS to reflect the result. 
 TEST EAX, imm32 A9 id AND an immediate 32-bit value with the contents of the EAX register and set rFLAGS to reflect the result. 
-TEST RAX, imm32 A9 id AND a sign-extended immediate 32-bit value with the contents of the RAX register and set rFLAGS to reflect the result. 
 TEST reg/mem8, imm8 F6 /0 ib AND an immediate 8-bit value with the contents of an 8- bit register or memory operand and set rFLAGS to reflect the result. 
 TEST reg/mem16, imm16 F7 /0 iw AND an immediate 16-bit value with the contents of a 16-bit register or memory operand and set rFLAGS to reflect the result. 
 TEST reg/mem32, imm32 F7 /0 id AND an immediate 32-bit value with the contents of a 32-bit register or memory operand and set rFLAGS to reflect the result. 
@@ -922,7 +861,6 @@ XCHG AX, reg16 90 +rw Exchange the contents of the AX register with the contents
 XCHG reg16, AX 90 +rw Exchange the contents of a 16-bit register with the contents of the AX register. 
 XCHG EAX, reg32 90 +rd Exchange the contents of the EAX register with the contents of a 32-bit register. 
 XCHG reg32, EAX 90 +rd Exchange the contents of a 32-bit register with the contents of the EAX register. 
-XCHG RAX, reg64 90 +rq Exchange the contents of the RAX register with the contents of a 64-bit register. 
 XCHG reg64, RAX 90 +rq Exchange the contents of a 64-bit register with the contents of the RAX register. 
 XCHG reg/mem8, reg8 86 /r Exchange the contents of an 8-bit register with the contents of an 8-bit register or memory operand. 
 XCHG reg8, reg/mem8 86 /r Exchange the contents of an 8-bit register or memory operand with the contents of an 8-bit register. 
@@ -941,7 +879,6 @@ eflags s s s s s s s s s s s s s s s s s s
 XOR AL, imm8 34 ib XOR the contents of AL with an immediate 8-bit operand and store the result in AL. 
 XOR AX, imm16 35 iw XOR the contents of AX with an immediate 16-bit operand and store the result in AX. 
 XOR EAX, imm32 35 id XOR the contents of EAX with an immediate 32-bit operand and store the result in EAX. 
-XOR RAX, imm32 35 id XOR the contents of RAX with a sign-extended immediate 32-bit operand and store the result in RAX. 
 XOR reg/mem8, imm8 80 /6 ib XOR the contents of an 8-bit destination register or memory operand with an 8-bit immediate value and store the result in the destination. 
 XOR reg/mem16, imm16 81 /6 iw XOR the contents of a 16-bit destination register or memory operand with a 16-bit immediate value and store the result in the destination. 
 XOR reg/mem32, imm32 81 /6 id XOR the contents of a 32-bit destination register or memory operand with a 32-bit immediate value and store the result in the destination. 

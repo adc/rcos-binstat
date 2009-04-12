@@ -1,26 +1,11 @@
 # TODO: 64-bit mips instructions
-
 import ir
 import struct
+import graphs
+import elf
 
-class Translator:
-  """ Base class for IR translators
-    To implement a translator for your architecture
-    you must implement the following:
-
-    register_info() -> returns information about available flags, registers, and their sizes
-
-    disassemble(bytecodes, base_addr)
-    translate(target) -> returns IR representation of binary
-    
-    mem_info() -> describes memory regions 
-    """
+class MIPS_Translator:
   def __init__(self):
-    pass
-
-class MIPS_Translator(Translator):
-  def __init__(self):
-    Translator.__init__(self)
     self.registers = [
         ir.register("$0", "$zero"),
         ir.register("$1", "$at"),
@@ -63,26 +48,25 @@ class MIPS_Translator(Translator):
     self.registers.append(ir.register("HILO",size=8))
     self.registers.append(ir.register("FIR"))
     self.registers.append(ir.register("FSR"))
-      
-  def mem_info():
-    pass
+    
+    self.external_functions = {}
     
   def decode_register(self, reg):
     R = None
     if type(reg) == str:
       for r in self.registers:
-        if r.name == reg or reg in r.aliases:
+        if reg in r.aliases:
           R = r
           break
       if not R:
-        raise Exception("DR: Unknown register: %s"%reg)
+        raise KeyError("DR: Unknown register: %s"%reg)
     else:
       for r in self.registers:
-        if r.name == "$%d"%reg:
+        if "$%d"%reg in r.aliases:
           R = r
           break
       if not R:
-        raise Exception("DR: Unknown register: $%d"%reg)
+        raise KeyError("DR: Unknown register: $%d"%reg)
 
         
     return ir.register_operand(R)
@@ -131,6 +115,7 @@ class MIPS_Translator(Translator):
       28  : "dmult",
       29  : "dmultu",
       30  : "ddiv",
+      31  : "ddivu",
       32  : ("add  rd = rs + rt",
           [ir.operation(DR(rd),"=",DR(rs),"+",DR(rt))]),
       33  : ("addu",
@@ -159,6 +144,7 @@ class MIPS_Translator(Translator):
       56  : "dssl",
       59  : "dsra",
       60  : "dsll32",
+      62  : "dsrl32",
       63  : "dsra32"
     }
     if function in instructions:
@@ -185,13 +171,13 @@ class MIPS_Translator(Translator):
     
     instructions = {
       4   :   ("beq",
-              [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       5   :   ("bne",
-              [ir.operation(DR(rs),'!=',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'!=',DR(rt)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       6   :   ("blez",
-              [ir.operation(DR(rs),'<=',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'<=',ir.constant_operand(0)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       7   :   ("bgtz",
-              [ir.operation(DR(rs),'>',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'>',ir.constant_operand(0)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       8   :   ("addi", #rt = rs + immediate
               [ir.operation(DR(rt),'=',DR(rs),'+',ir.constant_operand(offset,size=2))]),
       9   :   ("addiu",
@@ -209,17 +195,20 @@ class MIPS_Translator(Translator):
       15  :   ("lui",
               [ir.operation(DR(rt),'=',ir.constant_operand(offset,size=2),'<<',ir.constant_operand(16))]),
       20  :   ("beqzl",
-              [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'==',DR(rt)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       21  :   ("bnezl",
-              [ir.operation(DR(rs),'!=',DR(rt)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'!=',DR(rt)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       22  :   ("blezl",
-              [ir.operation(DR(rs),'<=',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'<=',ir.constant_operand(0)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
       23  :   ("bgtzl",
-              [ir.operation(DR(rs),'>',ir.constant_operand(0)), ir.branch_true(ir.constant_operand((offset<<2) + 4))]),
+              [ir.operation(DR(rs),'>',ir.constant_operand(0)), ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))]),
+      24  :   ("daddi", 
+              [ir.operation(DR(rt),'=',DR(rs),'+',ir.constant_operand(offset,size=2,signed=1))]),
       25  :   ("daddiu", #unsigned is a misnomer
               [ir.operation(DR(rt),'=',DR(rs),'+',ir.constant_operand(offset,size=2,signed=1))]),
       26  :   "ldl",
       27  :   "ldr",
+      29  :   "JALX",
       32  :   ("lb",
               [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=1)]),
       33  :   ("ll", #atmoic load words
@@ -238,10 +227,12 @@ class MIPS_Translator(Translator):
               [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),size=1)]),
       41  :   ("sh",
               [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),size=2)]),
+      42  :   "swl",
       43  :   ("sw",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),
+              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt))]),
       44  :   "sdl",
       45  :   "sdr",
+      46  :   "swr",
       49  :   "lwc1",
       53  :   "ldc1",
       55  :   ("ld",
@@ -249,7 +240,7 @@ class MIPS_Translator(Translator):
       57  :   "swc1",
       61  :   "sdc1",
       63  :   ("sd",
-            [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))])
+            [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt))])
       
     }
     
@@ -260,24 +251,24 @@ class MIPS_Translator(Translator):
         
         if code in [0,2]: #BLTZ, BLTZL
           instr = ("bltz",[ir.operation(DR(rs),'<',ir.constant_operand(0)), 
-                  ir.branch_true(ir.constant_operand((offset<<2) + 4))])
+                  ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))])
         elif code in [1,3]: #BGEZ, BGEZL
           instr = ("bltz",[ir.operation(DR(rs),'>=',ir.constant_operand(0)), 
-                  ir.branch_true(ir.constant_operand((offset<<2) + 4))])
+                  ir.branch_true(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4))])
         elif code in [16,18]: #BLTZAL, BLTZALL
           instr = ("bltzal",[ir.operation(DR(rs),'<',ir.constant_operand(0)),
                   ir.operation(DR("$ra"),'=',DR("$pc"),'+',ir.constant_operand(4)),
-                  ir.call(ir.constant_operand((offset<<2) + 4))])
+                  ir.call(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4),relative=0)])
         elif code in [17,19]: #BGEZAL,BGEZALL
           instr = ("bgezal",[ir.operation(DR(rs),'>=',ir.constant_operand(0)),
                   ir.operation(DR("$ra"),'=',DR("$pc"),'+',ir.constant_operand(4)),
-                  ir.call(ir.constant_operand((offset<<2) + 4))])
+                  ir.call(ir.constant_operand(((ir.sext16(offset)<<2)&0xfffffffff) + 4), relative=0)])
       else:
         instr = instructions[OP]
           
       return instr
     except KeyError:
-      raise Exception("unknown op code for I types: %d"%OP)
+      raise KeyError("unknown op code for I types: %d"%OP)
 
   def get_j_type(self, opcode, address):
     OP = opcode >> 26
@@ -288,7 +279,7 @@ class MIPS_Translator(Translator):
       return ("j", [ir.jump(ir.constant_operand(((target<<2)&0xfffffff) + (address&0xf0000000)))])
     elif OP == 3:
       return ("jal", [ir.operation(DR("$ra"),'=',DR('$pc'),'+',ir.constant_operand(4)),
-                    ir.call(ir.constant_operand(((target<<2)&0xfffffff) + (address&0xf0000000)))])
+                    ir.call(ir.constant_operand(((target<<2)&0xfffffff) + (address&0xf0000000)), relative=0)])
   def get_coproc_type(self, opcode):
     return "unsupported"
   
@@ -298,7 +289,6 @@ class MIPS_Translator(Translator):
     OP = opcode >> 26
 
     ret = None
-    
     if OP == 0:
       ret = self.get_r_type(opcode)
     elif OP in [2,3]:
@@ -306,7 +296,10 @@ class MIPS_Translator(Translator):
     elif OP in [16,17,18,19]:
       ret = self.get_coproc_type(opcode)
     else:
-      ret = self.get_i_type(opcode)
+      try:
+        ret = self.get_i_type(opcode)
+      except KeyError, e:
+        raise KeyError("%s addr=%x"%(e,base_addr))
     
     if type(ret) != str:
       for n in ret[1]:
@@ -324,8 +317,12 @@ class MIPS_Translator(Translator):
         branchQ  = []
         
         while addr < seg.end:
-          
-          IR = self.disassemble(target.memory[addr:addr+4], addr)
+          #print hex(addr)
+          try:
+            IR = self.disassemble(target.memory[addr:addr+4], addr)
+          except KeyError, e:
+            print "finishing early due to invalid disassembly", e
+            break
           if type(IR) == str:
             instrs = [ir.unhandled_instruction(IR)]
             instrs[0].address = addr
@@ -337,7 +334,7 @@ class MIPS_Translator(Translator):
           if FIXDELAY:
             FIXDELAY = 0
             added = 1
-            #XXX hack alert, flip the addresses also
+            #XXX even worse than normal code alert, flip the addresses also
             a = instrs[0].address
             b = branchQ[0].address
             for n in instrs:
@@ -360,4 +357,103 @@ class MIPS_Translator(Translator):
           
           addr += 4
 
-    return output 
+    return output
+
+  def libcall_transform(self, IR, bin):
+    """
+    gcc calling convention is something like this
+      lw t9, -offset(gp)
+      jalr t9
+    
+    in the IR it becomes
+      ($25 = $25 + offset)
+      LOAD $25
+      CALL $25
+    """
+    callgraph = {}
+    
+    #pull out GP from REGINFO XXX this is not correct
+    GP = 0
+    for phdr in bin.binformat.Phdrs:
+      if phdr.type == 0x70000000:
+        GP = struct.unpack(">L", bin.memory[phdr.vaddr+20: phdr.vaddr+24])[0]
+    
+    if not GP:
+      print "[x] FAILED TO FIND GP"
+      return
+    
+    print "GP = ", hex(GP)
+    
+    f = graphs.linear_sweep_split_functions(IR)
+    for func in f:
+      callgraph[func] = graphs.make_blocks(f[func])
+
+    
+    prev = None
+    sg = callgraph.keys()
+    sg.sort()
+    for func in sg:
+      print "====== func %x ====="%func
+      for block in callgraph[func]:
+        print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
+        print "parents: ",[hex(x) for x in block.parents]
+        print "branches: ",hex(block.next), hex(block.branch)
+        
+        #do value propagation within a block
+        propreg = {}
+        for r in self.registers:
+          propreg[r.register_name] = 0
+        
+        for z in block.code:
+          if z.type == "operation":
+            if len(z.ops) > 1:
+              if z.ops[1] != "=":
+                prev = z
+              else:
+                if len(z.ops) == 5:
+                  if z.ops[0].type == "register":
+                    if z.ops[3] == '+':
+                      if z.ops[2].type == "register" and z.ops[4].type == "constant":
+                        if propreg[str(z.ops[2].register_name)] != 0:
+                          value = propreg[str(z.ops[2].register_name)] + z.ops[4].value
+                          if value in bin.memory:
+                            data = elf.pull_ascii(bin.memory, value)
+                            if len(data) > 1:
+                              z.annotation = '%%%% "'+ data.replace('"', '\"').replace("'", "\'")+ '"'
+                            else:
+                              z.annotation = "%%%% (%x)"%value
+                          propreg[str(z.ops[0].register_name)] = value
+                
+              #check if an offset from gp is being used
+              #and see if a string can be pulled out
+              for i in range(1, len(z.ops)):
+                if z.ops[i] == '+':
+                  if z.ops[i-1].type == "register":
+                    if z.ops[i-1].register_name == "$gp":
+                      if z.ops[i+1].type == "constant":
+                        data = elf.pull_ascii(bin.memory,GP+z.ops[i+1].value)
+                        if data:
+                          z.annotation = "GP"+str(z.ops[i+1].value)+"  @@@ " + `data`
+              #print hex(z.address),z
+          elif z.type == "load":
+            if prev:
+              if prev.ops[1] == '+':
+                if prev.ops[0].type == "register" and prev.ops[2].type == "constant":
+                  if prev.ops[0].register_name == "$gp":
+                    addr = GP + prev.ops[2].value
+                    if addr in bin.memory and (addr+z.size) in bin.memory:
+                      sizemap = {1: 'B', 2: 'H', 4: 'L', 8: 'Q'}
+                      value = struct.unpack(">%s"%sizemap[z.size], bin.memory[addr:z.size+addr])[0]
+                      z.annotation = "%%%% (%x)"%value
+                      propreg[str(z.dest.register_name)] = value
+                    
+              #propreg[z.dest.register_name] = 
+            if z.dest.register_name == "$t9":
+              if prev.address == z.address:
+                addr = (GP+prev.ops[2].value)&0xffffffff
+                if addr in self.external_functions:
+                  z.annotation= '### ' + self.external_functions[addr]
+
+          print hex(z.address),z
+        print "---end of block---\n"
+      print "====\n\n\n"

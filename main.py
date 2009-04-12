@@ -13,7 +13,7 @@ class Binparser:
     self.entry_points = self.find_entry_points()
 
   def parse(self):
-    data = open(fn).read()
+    data = open(self.filename).read()
     self.data = data
 
     if "ELF":
@@ -51,11 +51,10 @@ if __name__ == "__main__":
   if bin.architecture == "MIPS":
     from mips_translator import MIPS_Translator
     mips = MIPS_Translator()
+    mips.external_functions = elf.mips_resolve_external_funcs(bin)
     IR_rep = mips.translate(bin)
-
-    #try to get plt out of bin
-    #elf.mips_resolve_symbols(bin)
     
+    mips.libcall_transform(IR_rep, bin)
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()

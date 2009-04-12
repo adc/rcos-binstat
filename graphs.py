@@ -9,52 +9,34 @@ class CodeBlock:
     self.next = 0
     self.branch = 0
     self.parents = []
-    
+  
   def split(self, address):
     if address <= self.start or address > self.end:
       return None
     
-    
     if len(self.code) == 1:
       raise Exception("trying to split sz =1")
 
-    #print "Splitting block %x-%x at %x"%(self.start, self.end, address)
-    #    print hex(address), hex(self.start), hex(self.end)
-    #    for n in self.code:
-    #      print hex(n.address), n
-    
-    #find the split point
-    #XXX Two design problems exist with splitting on address
-    # 1) Delay slots cause addresses to come in non-linear order
-    # 2) Split-part instructions at the same address need to be kept together
-    
-    #find the split point based on the above issues
     i = 1
-    while i < len(self.code) and self.code[-i].address != address: #find hit backwards, this should fix delay
+    while i < len(self.code):
+      if self.code[i].address >= address:
+        break
       i += 1
-
-    if i == len(self.code):
-      return
-
-    #keep multipart instructions together
-    j = self.code[-i].address    
-    while (i+1) < len(self.code) and self.code[-(i+1)].address == j:
-      i += 1
-
-    
-    top = self.code[:-i]
-    bottom = self.code[-i:]
+        
+    #print "Splitting %x-%x:%d  @%x"%(self.start,self.end, len(self.code), address),
+    top = self.code[:i]
+    bottom = self.code[i:]
       
-    
     #print "Old block becomes %x-%x"%(top[0].address, top[-1].address)
     #print "New block becomes %x-%x"%(bottom[0].address, bottom[-1].address)
     self.code = top
     self.end = top[-1].address
+    #print "old=%x-%x:%d     new=%x-%x:%"%(self.start,self.end, len(self.code), bottom[0].address, bottom[-1].address, len(bottom))
     
     return CodeBlock(bottom)
 
 def CBcmp(a,b):
-      return a.start - b.start
+  return a.start - b.start
 
 def is_stack_sub(x):
   #look for stack pointer
@@ -70,7 +52,7 @@ def is_stack_sub(x):
       if x.ops[3] == '+':
         value = operand.value
       elif x.ops[3] == '-':
-        value = -opernad.value
+        value = -operand.value
       else:
         return
       
@@ -80,6 +62,8 @@ def is_stack_sub(x):
 
 
 def linear_sweep_split_functions(code):
+  if len(code) == 0: return
+
   functions = {}
   func_start_addr = 0
 
@@ -87,10 +71,8 @@ def linear_sweep_split_functions(code):
   current_start = code[0].address
   for x in code:
     prev = func_start_addr
-    if x.type == "call":
-      if x.dest.type == "constant":
-        pass#print "CALL %d %x"%(x.dest.value, x.dest.value+x.address)
-    elif x.type == "operation":
+
+    if x.type == "operation":
       if is_stack_sub(x):
         func_start_addr = x.address
     
@@ -136,8 +118,9 @@ def make_blocks(code):
             #there is a case with delay slots where an address
             # can go missing and enter another slot
             #should not trigger if blocks are inserted in order
+            print blocks[i].code
             raise Exception("FAILED TO SPLIT @ %x"%dest)
-      
+            
     
     if instr.type == "branch_true":
       dest = instr.dest.value + instr.address
@@ -150,12 +133,17 @@ def make_blocks(code):
             blocks.insert(i, newblock)
             break            
           else:
+            print "2",blocks[i].code, hex(blocks[i].start), hex(blocks[i].end)
             raise Exception("FAILED TO SPLIT @ %x"%dest)
       #split after the current block      
       SPLITNEXT = 1
-
+  
+  #remove empty blocks
+  for x in blocks:
+    if len(x.code) == 0:
+      blocks.remove(x)
   #sweep 2, connect all the dots
-  blocks.sort(CBcmp)
+  blocks.sort(cmp=CBcmp)
   for i in range(0, len(blocks)-1):
     blocks[i].next = blocks[i+1].start
     instr = blocks[i].code[-1]
@@ -178,7 +166,10 @@ def graph_function(code):
   o = "digraph function_0x%x {\n"%(code[0].address)  
   for b in blocks:
     c = "\n".join(["0x%x: %s"%(instr.address,repr(instr)) for instr in b.code])
-    o += "    block_%s [shape=box align=left label=%r];\n"%(hex(b.start), c)
+    s = "%r"%c
+    if s[0] == '\'':
+      s = '"' + s[1:-1] + '"'
+    o += "    block_%s [shape=box align=left label=%s];\n"%(hex(b.start), s)
     if b.next:
       o += "    block_%s -> block_0x%x;\n"%(hex(b.start), b.next)
     if b.branch:
@@ -186,6 +177,7 @@ def graph_function(code):
   o += "}\n"
   open("graphs/%x.dot"%code[0].address,'w').write(o)
   return 
+  
   for b in blocks:
     print "********", hex(b.start), '-', hex(b.end), "********"
     print "parents: ",[hex(x) for x in b.parents]
@@ -196,9 +188,15 @@ def graph_function(code):
   #sweep 2, draw connections
 
 def make_flow_graph(code):
+  if not code:
+    return
   f = linear_sweep_split_functions(code)
-  for func in f:
+  k = f.keys()
+  k.sort()
+  for func in k:
+    #print "#######func 0x%x"%func
     graph_function(f[func])
+    #print "#######\n\n\n"
 
 """
   for n in code:

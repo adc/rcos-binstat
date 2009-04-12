@@ -1,4 +1,5 @@
 import struct
+import string
 """
 TODO:
   64-bit support.
@@ -160,6 +161,16 @@ SHT_HIPROC = 0x7fffffff
 SHT_LOUSER = 0x80000000
 SHT_HIUSER = 0x8fffffff
 
+STT_NOTYPE = 0
+STT_OBJECT = 1
+STT_FUNC = 2
+STT_SECTION = 3
+STT_FILE = 4
+STT_NUM = 5
+STT_LOOS = 11
+STT_HIOS = 12
+STT_LOPROC = 13
+STT_HIPROC = 15
 
 EM_NONE = 0
 EM_M32 = 1
@@ -171,6 +182,22 @@ EM_860 = 7
 EM_MIPS = 8
 EM_S370 = 9
 EM_MIPS_RS3_LE = 10
+
+STB_LOCAL = 0
+STB_GLOBAL = 1
+STB_WEAK = 2
+STB_NUM = 3
+STB_LOOS = 10
+STB_HIOS = 12
+STB_LOPROC = 13
+STB_HIPROC = 15
+
+def ELF32_ST_BIND(val):
+  return val >>4
+def ELF32_ST_TYPE(val):
+  return val & 0xf
+def ELF32_ST_INFO(bind, _type):
+  return (bind<<4) + (_type & 0xf)
 
 
 #symbol structures
@@ -354,49 +381,66 @@ class Elf:
 def pull_ascii(data, offset):
   o = ""
   while offset in data and data[offset] != "\x00":
+    if data[offset] not in string.printable: break
     o += data[offset]
     offset += 1
   return o
 ###TODO: does mips have a jmprel or equiv? for sstrip'd binaries
-def mips_resolve_symbols(bin):
+
+def mips_resolve_external_funcs(go):
+  funcs = {}
+  
   addr = 0
-  for phdr in bin.binformat.Phdrs:
+  for phdr in go.binformat.Phdrs:
     if phdr.type == PT_DYNAMIC:
       addr = phdr.vaddr
       break
-
+  
   strsz = None
   strtab = None
   symtab = None
   dthash = None
-  Edyn = Elf32Dyn(bin.memory[addr:addr+8], bin.binformat.endianness)
+  pltgot = None
+  Edyn = Elf32Dyn(go.memory[addr:addr+8], go.binformat.endianness)
   while Edyn.d_tag != DT_NULL:
-    print hex(addr),'>>>>=    ',hex(Edyn.d_tag), hex(Edyn.d_val)
+    #print hex(addr),'>>>>=    ',hex(Edyn.d_tag), hex(Edyn.d_val)
     if Edyn.d_tag == DT_STRTAB:
       strtab = Edyn.d_val
-      print "STRTAB"
+      #print "STRTAB"
     elif Edyn.d_tag == DT_SYMTAB:
       symtab = Edyn.d_val
-      print "SYMTAB", hex(symtab)
+      #print "SYMTAB", hex(symtab)
     elif Edyn.d_tag == DT_HASH:
       dthash = Edyn.d_val
-      print "HASH"
-    elif Edyn.d_tag == 10:
+      #print "HASH"
+    elif Edyn.d_tag == DT_STRSZ:
       strsz = Edyn.d_val
-      print "STRSZ"
-      
+      #print "STRSZ"
+    elif Edyn.d_tag == DT_PLTGOT:
+      pltgot = Edyn.d_val
+    elif Edyn.d_tag == 0x7000000a:
+      localgotno = Edyn.d_val
+    elif Edyn.d_tag == 0x70000011:
+      symtabno = Edyn.d_val
+    elif Edyn.d_tag == 0x70000013:
+      gotsym = Edyn.d_val
     addr += 8
-    Edyn = Elf32Dyn(bin.memory[addr:addr+8], bin.binformat.endianness)
+    Edyn = Elf32Dyn(go.memory[addr:addr+8], go.binformat.endianness)
+  
   
   addr = symtab+16
-  Esym = Elf32Sym(bin.memory[addr:addr+16], bin.binformat.endianness)
-  print Esym.st_name, Esym.st_value, Esym.st_size, Esym.st_info, Esym.st_other, Esym.st_shndx
+  Esym = Elf32Sym(go.memory[addr:addr+16], go.binformat.endianness)
+  i = 1
   while Esym.st_name != 0:
-    #self.st_name, self.st_value, self.st_size, self.st_info, self.st_other,\
-    #self.st_shndx    
-    print "=>>>>", pull_ascii(bin.memory, strtab+Esym.st_name), hex(Esym.st_size),\
-                  hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other), hex(Esym.st_shndx)
+
+    if i >= gotsym:
+      #print "=>>>>", pull_ascii(go.memory, strtab+Esym.st_name), hex(Esym.st_size),\
+      #              hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other), hex(Esym.st_shndx)
+      
+      funcs[(localgotno+i-gotsym)*4+pltgot] = pull_ascii(go.memory, strtab+Esym.st_name)
+      
+    i += 1
     addr += 16
-    Esym = Elf32Sym(bin.memory[addr:addr+16], bin.binformat.endianness)
+    Esym = Elf32Sym(go.memory[addr:addr+16], go.binformat.endianness)
   
-  print hex(addr)
+  return funcs

@@ -22,16 +22,280 @@ class X86_Translator:
       ir.register("ebp:32-0", "bp:16-0"),
       ir.register("esp:32-0", "sp:16-0"),
       ir.register("eip:32-0", "ip:16-0"),
-      ir.register("eflags:32-0", "ID:21", "VIP:20", 
-                  "VIF:19", "AC:18", "VM:17",
-                  "RF:16", "NT:14", "IOPL:13-12", 
-                  "OF:11", "DF:10", "IF:9",
-                  "TF:8", "SF:7", "ZF:6", 
-                  "AF:4", "PF:2", "CF:0")]
+      ir.register("eflags:32-0", "id:21", "vip:20", 
+                  "vif:19", "ac:18", "vm:17",
+                  "rf:16", "nt:14", "iopl:13-12", 
+                  "of:11", "df:10", "if:9",
+                  "tf:8", "sf:7", "zf:6", 
+                  "af:4", "pf:2", "cf:0"),
+      ir.register("tmem:32-0"),
+      ir.register("tval:32-0")]
     self.mode = 32
+########### disassembler code   ####################
+  def decodePrefix(self, bytes):      
+    opsize   = {0x66: "opsize override"}      
+    addrsize = {0x67: "addrsz override"}
+    segments = {0x2e: "cs segment override",
+                0x26: "es segment override",
+                0x3e: "ds segment override",
+                0x64: "fs segment override",
+                0x65: "gs segment override",
+                0x36: "ss segment override"}
+    lock     = {0xf0: "lock"               }
+    repeat   = {  0xf3: "rep",
+                  0xf2: "repn"             }
+    
+    prefixes = [opsize, addrsize, segments, lock, repeat]
+    # In 64-bit mode, the CS, DS, ES, and SS segment overrides are ignored. 
+    
+    #TODO: REX for 64-bit mode
+    
+    ret = []
+    used_bytes = ""
+
+    prefix_bytes = ""
+    for x in bytes:
+      z = ''
+      for p in prefixes:
+        if ord(x) in p:
+          z = x
+          break
+      if not z:
+        break
+      prefix_bytes += z
+    
+    #make sure only one from each group has been selected
+    ret = {}
+    for p in prefixes:
+      group = {}
+      for b in prefix_bytes:
+        if ord(b) in p:
+          group[ord(b)] = p[ord(b)]
+      if len(group.keys()) > 1:
+        raise InvalidInstruction("bad prefix")
+      ret.update(group)
+
+    return prefix_bytes, ret
+
+
+  def decode_opcode(self, data, mode):
+    count = 1
+    OP = ord(data[0])
+
+    if OP not in X86DecodeTable:
+      if OP & 0xf8 not in X86DecodeTable:
+        raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,data))
+      else:
+        if '+' not in X86DecodeTable[OP&0xf8]['instr'][mode][0]['modrm']:
+          raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,bytes))
+
+        instruction = X86DecodeTable[OP&0xf8]['instr'][mode][0]
+        return 1, instruction
 
     
-  def disassemble(self, data, addr):    
+    node = X86DecodeTable[OP]
+
+    while 'instr' not in node:
+      data = data[1:]
+      nextOP = ord(data[0])
+      count += 1
+      
+      if nextOP not in node:
+        raise InvalidInstruction("invalid opcode")
+      
+      node = node[nextOP]
+      
+    if mode not in node['instr']:
+      raise InvalidInstruction("invalid opcode, missing mode")
+    
+    #check if multiple instructions are possible
+    #if so, examine modrm bits for match
+    if len(node['instr'][mode]) == 1:
+      return count, node['instr'][mode][0]
+    else:
+      if not node['instr'][mode][0]['modrm']:
+        print node['instr'][mode]
+        print "HUUUHHH"        
+      elif '+'  in node['instr'][mode][0]['modrm']:
+        return count, node['instr'][mode][0]
+      else:
+        peek_modrm = ord(data[1])
+        OPbits = (peek_modrm >> 3) & 7        
+        for x in node['instr'][mode]:
+          if ('/%d'%OPbits) in x['modrm']:
+            return count, x
+
+        raise InvalidInstruction("unmatched OPbits in modrm")
+      
+    raise InvalidInstruction("No matches")
+  
+  
+  def decode_operands(self, OP, instruction, data, mode):
+    """
+    OP -> opcode
+    instruction -> dictionary w/ instruction data
+    data -> bytes following opcode
+    mode -> addressing mode (based on prefixes)
+    """
+    #helper functions
+    def get_imm(sz, offset, data, signed=1):
+      if sz == 1:
+        return ir.constant_operand(ord(data[offset]), signed=signed)
+      elif sz == 2:
+        return ir.constant_operand(struct.unpack('<H',data[offset:offset+2])[0], signed=signed)
+      elif sz == 4:
+        return ir.constant_operand(struct.unpack('<L',data[offset:offset+4])[0], signed=signed)
+      else:
+        raise Exception("bad imm value")
+    #####
+    
+    operands = []
+    TMEM_IR = [] #IR translation for CISC memory access
+    
+    reg_mem = None
+    reg = None
+    
+    sz = 0
+    if not instruction['modrm'] or '+' in instruction['modrm']:
+      reg = self.DR(OP & 7, mode)
+    else: 
+      #modrm looks like [mm][reg2][reg1]
+      modrm = ord(data[sz]); sz += 1
+      mod = modrm >> 6
+      reg1 = modrm & 7
+      reg2 = (modrm>>3)& 7
+      Offset = None
+      sib = None
+      if mod != 3 and reg1 == 4:
+        sib = ord(data[1])
+        sz += 1
+
+      #print 'modrm',mod
+      if mod == 0:
+        if reg1 == 5:
+          #[displacement]
+          TMEM_IR = [ir.operation(get_imm(mode/8, sz, data))]
+          reg_mem = self.DR("TMEM", mode)
+        else:
+          #[reg1] -> store into temporary memory
+          RegOne = self.DR(modrm & 7, mode)
+          TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=',RegOne)]
+          reg_mem = self.DR("TMEM", mode)
+      elif mod == 1:
+        #[reg+ib]
+        RegOne = self.DR(modrm & 7, mode)
+        Offset = get_imm(1, sz, data)
+
+        TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=',RegOne,'+', Offset)]
+        reg_mem = self.DR("TMEM", mode)
+        sz += 1
+      elif mod == 2:
+        #[reg+mode_offset]
+        RegOne = self.DR(modrm & 7, mode)
+        Offset = get_imm(mode/8, sz, data)
+        TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=',RegOne,'+', Offset)]
+        reg_mem = self.DR("TMEM", mode)
+        sz += mode/8
+      elif mod == 3:
+        #reg + reg
+        RegOne = self.DR(modrm & 7, mode)
+        reg_mem = RegOne
+    
+      RegTwo = self.DR( (modrm >> 3)&7, mode)
+      if sib:
+        #redo TMEM_IR
+        #ModRM with SIB: the reg field of the ModRM byte and the base and index fields of the SIB byte. 
+        #(Case 3 in Figure1-3 on page15 shows an example of this). 
+        #decode SIB
+        #scale, index, base
+        #[2][3][3]
+        base = sib & 7
+        index = (sib >> 3)&7
+        scale = sib >> 6
+        
+        base_reg = None
+        index_reg = None
+        if base != 5:
+          base_reg = self.DR(base, mode)
+        else:
+          base_reg = reg_mem #displacement value
+        if index != 4:
+          index_reg = self.DR(index, mode)
+        
+        #base + index*scale + offset
+        oplist = [self.DR("TMEM",mode),'=',]
+        if base_reg:
+          oplist.append(base_reg)
+        if index_reg:
+          if len(oplist):
+            oplist += ['+', index_reg, '*', 2**scale]
+          else:
+            oplist += [index_reg,'*', 2**scale]
+        if Offset:
+          oplist += ['+',Offset]
+          
+        TMEM_IR = [ir.operation(*oplist)]
+        
+
+      reg = RegTwo
+      
+    Immediate = None
+    if instruction['immediate']:
+      #XXXX signedness
+      strings = {'ib': 1, 'iw' : 2, 'id': 4, 'iq': 8}
+      length = strings[instruction['immediate']]
+      if mode == self.mode/2:
+        length /= 2
+      Immediate = get_imm(length, sz, data)
+      sz += length
+
+    code_offset = None
+    if instruction['code_offset']:
+      strings = {'cb': 1, 'cw' : 2, 'cd': 4, 'cq': 8, 'm64': 8}
+      length = strings[instruction['code_offset']]
+      code_offset = get_imm(length, sz, data)
+      sz += length
+
+    mem_addr = None
+    #check for memory offsets in operand ( MOV A3 opcode, etc)
+    for oper in instruction['operands']:
+      if 'moffset%d'%mode in oper:
+        length = mode/8
+        mem_addr = get_imm(length, sz, data)
+        sz += length      
+
+    for oper in instruction['operands']:
+      value = ""
+      if 'reg/mem' in oper:
+        value = reg_mem
+      elif 'reg' in oper:
+        value = reg
+      elif 'moffset' in oper:
+        value = mem_addr
+      elif 'rel' in oper:
+        if code_offset:
+          value = code_offset
+        else:
+          value = Immediate
+      elif 'imm' in oper:
+        value = Immediate
+      elif 'mem' in oper:
+        value = reg_mem
+      elif 'EAX' in oper:
+        value = self.DR('EAX', mode)
+      elif 'AX' in oper:
+        value = self.DR('AX', mode)
+      elif 'AL' in oper:
+        value = self.DR('AL', mode)
+      else:
+        print "XXX Hmmmm", oper
+        
+      operands.append((oper,value))
+    
+    return sz, operands, TMEM_IR
+    
+  def DR(self, index, mode=32):
+    """Decode register based on register number and mode"""
     regdecode = {0: ['ah', 'al', 'ax', 'eax', 'rax'],
                  1: ['ch', 'cl', 'cx', 'ecx', 'rcx'],
                  2: ['dh', 'dl', 'dx', 'edx', 'rdx'],
@@ -49,263 +313,240 @@ class X86_Translator:
                  14: ['', 'r14b', 'r14w', 'r14d', 'r14'],
                  15: ['', 'r15b', 'r15w', 'r15d', 'r15'],
                  }
-    regmodes = {16: 2, 32: 3, 64: 4}
-    #in 64-bit esi/edi/ebp/esp gain low byte access w/ REX
+   #TODO in 64-bit esi/edi/ebp/esp gain low byte access w/ REX
+    if type(index) == int:
+      regmodes = {16: 2, 32: 3, 64: 4}
+      regname = regdecode[index][regmodes[mode]]
+    elif type(index) == str:
+      regname = index.lower()
+    else:
+      raise InvalidInstruction("UNKNOWN DR index: %s"%repr(index))
+      
+    register = None
+    for reg in self.registers:
+      if regname in reg:
+        register = reg
+        break
+    if not register:
+      raise InvalidInstruction("Failed to decode register: %s"%regname)
     
-    def decodePrefix(bytes):      
-      opsize   = {0x66: "opsize override"}      
-      addrsize = {0x67: "addrsz override"}
-      segments = {0x2e: "cs segment override",
-                  0x26: "es segment override",
-                  0x3e: "ds segment override",
-                  0x64: "fs segment override",
-                  0x65: "gs segment override",
-                  0x36: "ss segment override"}
-      lock     = {0xf0: "lock"               }
-      repeat   = {  0xf3: "rep",
-                    0xf2: "repn"             }
-      
-      prefixes = [opsize, addrsize, segments, lock, repeat]
-      # In 64-bit mode, the CS, DS, ES, and SS segment overrides are ignored. 
-      
-      #TODO: REX for 64-bit mode
-      
-      ret = []
-      used_bytes = ""
-
-      prefix_bytes = ""
-      for x in bytes:
-        z = ''
-        for p in prefixes:
-          if ord(x) in p:
-            z = x
-            break
-        if not z:
-          break
-        prefix_bytes += z
-      
-      #make sure only one from each group has been selected
-      ret = {}
-      for p in prefixes:
-        group = {}
-        for b in prefix_bytes:
-          if ord(b) in p:
-            group[ord(b)] = p[ord(b)]
-        if len(group.keys()) > 1:
-          raise InvalidInstruction("bad prefix")
-        ret.update(group)
-
-      return prefix_bytes, ret
-
-    def get_imm(sz, offset, data, signed=0):
-      if sz == 1:
-        return ir.constant_operand(ord(data[offset]), signed)
-      elif sz == 2:
-        return ir.constant_operand(struct.unpack('<H',data[offset:offset+2])[0], signed)
-      elif sz == 4:
-        return ir.constant_operand(struct.unpack('<L',data[offset:offset+4])[0], signed)
-      else:
-        raise Exception("bad imm value")
+    return ir.register_operand(regname, register)
   
-    def decode_one_op(OP, mode, bytes):
-      print 'single'
-      DBG = 0
-      if DBG: print 'decode 1-op'
-      orig = bytes
-      bytes = bytes[1:]
-      
-      if OP in X86DecodeTable:
-        instruction = X86DecodeTable[OP]['instr'][mode][0]
-      else:
-        #check for +r{b/w/d/q} syntax on one-byte opcodes
-        if OP & 0xf8 not in X86DecodeTable:
-          raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,bytes))
-        else:
-          if '+' not in X86DecodeTable[OP&0xf8]['instr'][mode][0]['modrm']:
-            raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,bytes))
-
-          instruction = X86DecodeTable[OP&0xf8]['instr'][mode][0]
-      
-      
-      Immediate = None
-      if instruction['immediate']:
-        #XXXX signedness
-        if DBG: print instruction['immediate'], mode
-        strings = {'ib': 1, 'iw' : 2, 'id': 4, 'iq': 8}
-        sz = strings[instruction['immediate']]
-        Immediate = get_imm(sz, 0, bytes)
-        bytes = bytes[sz:]
-
-      code_offset = None
-      if instruction['code_offset']:
-        if DBG: print instruction['code_offset'], mode
-        strings = {'cb': 1, 'cw' : 2, 'cd': 4, 'cq': 8, 'm64': 8}
-        sz = strings[instruction['code_offset']]
-        code_offset = get_imm(sz, 0, bytes)
-        bytes = bytes[sz:]
-      
-      Reg = DR(OP & 7, mode)
-      
-      print Reg, Immediate, code_offset, instruction['operands']
-      return len(orig)-len(bytes), instruction['mnemonic']
+  def makeIR(self, instruction, size, operands, TMEM_IR, OPmode):
+    """
+    instruction -> dictionary of instruction information
+    operands -> list of operand type and value
+    TMEM_IR -> IR for complex memory access
+    """
     
-    def DR(number, mode):
-      return regdecode[number][regmodes[mode]]
-      
-      
-    def decode_opcode(prefixes, data):
-      orig = data
-      OP = ord(data[0])
-      data = data[1:]
-      instruction = None
+    #print "-----make IR ------"
+    m = instruction['mnemonic']
+    
+    #figure out if TMEM_IR is LOAD or STORE
+    preload = True
+    if TMEM_IR:
+      #first operand is destination
+      if 'reg/mem' in operands[0][0]:
+        preload = False
 
-      DBG = 0
+    IR = []
+    if m == "ADC":
+      IR = [ir.operation(operands[0][1],'=',operands[0][1],'+',operands[1][1],'+',self.DR("CF"))]
+    elif m == "ADD":
+      IR = [ir.operation(operands[0][1],'=',operands[0][1],'+',operands[1][1])]
+    elif m == "AND":
+      IR = [ir.operation(operands[0][1],'=',operands[0][1],'&',operands[1][1])]
+    elif m == "CALL":
+      IR = [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",ir.constant_operand(size)),
+            ir.operation(self.DR("ESP",OPmode),'=',self.DR("ESP"),'-',ir.constant_operand(4)),
+            ir.store(self.DR("tval"))]
       
-      OPmode = self.mode
-      ADDRmode = self.mode
-      for p in prefixes:
-        if 'opsize' in prefixes[p]:
-          OPmode = self.mode/2
-        elif 'addrsz' in prefixes[p]:
-          ADDRmode = self.mode/2
-          
-      #it might be a one-op code, check it out
-      if OP not in X86DecodeTable:
-        return decode_one_op(OP, OPmode, data)
-      
-      #search until OPmode is found
-      prev = X86DecodeTable[OP]
-      while 'instr' not in prev:
-        OP = ord(data[0])
-        data = data[1:]
-        if OP not in prev:
-          raise InvalidInstruction("invalid opcode")
-        prev = prev[OP]
-
-      if OPmode not in prev['instr']:
-        raise InvalidInstruction("invalid opcode")
-      
-      if len(prev['instr'][OPmode]) == 1:
-        if DBG: print "EZ choice"
-        instruction = prev['instr'][OPmode][0]
+      #absolute jump vs relative jump
+      if 'rel' in operands[0][0]:
+        IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1],'+',ir.constant_operand(size)),
+               ir.call("tval")
+              ]
       else:
-        #check if the modrm says which one we want
-        if not prev['instr'][OPmode][0]['modrm']:
-          if len(prev['instr'][OPmode][0]['operands']) != 0:
-            #print "CRAP????? what now"
-            #print prev['instr'][OPmode]
-            #TODO bug check, picks first one for now
-            instruction = prev['instr'][OPmode][0]
-          else:
-            return decode_one_op(OP,OPmode, data)
-        else:
-          peek_modrm = ord(data[0])
-          target = (peek_modrm >> 3) & 7
-          for x in prev['instr'][OPmode]:
-            if ('/%d'%target) in x['modrm']:
-              #print "****** match %d"%target
-              instruction = x
-              break
-              
-          if not instruction:
-            raise InvalidInstruction("unmatched regfield in modrm")
-      
-      modrm = None
-      sib = None
-      if instruction['modrm']:
-        #decode modrm        
-        if '+' not in instruction['modrm']:
-          if DBG: print 'modrm'
-          modrm = ord(data[0])
-          data = data[1:]
-      
-      RegOne = None
-      Offset = 0
-
-      if modrm:
-        mod = modrm>>6
-        if mod != 3 and modrm&7 == 4:
-          if DBG: print 'sib'
-          sib = ord(data[0])
-          data = data[1:]
-          
-        #mod = [mm][reg2][reg1]
-        if mod == 0:
-          # [reg1] is an operand
-          #TODO
-          pass
-        elif mod == 1:
-          #[reg1+ib]
-          Offset = ord(data[0])
-          if DBG: print 'mod1'
-          data = data[1:]
-          RegOne = DR(modrm & 7, ADDRmode)
-        elif mod == 2:
-          #[reg1+mode_offset]
-          Offset = get_imm(ADDRmode/8, 0, data)
-          if DBG: print 'mod2'
-          data = data[(ADDRmode/8):]
-          RegOne = DR(modrm & 7, ADDRmode)
-        elif mod == 3:
-          #reg1
-          if DBG: print 'mod3'
-          RegOne = DR(modrm & 7, ADDRmode)
-        else:
-          raise InvalidInstruction("modrm insanity")
-      
-      if modrm:
-        RegTwo = DR( (modrm >> 3)&7, ADDRmode)
+        IR += [ir.call(operands[0][1])]
+    elif m == "CLC":
+      IR = [ir.operation(self.DR("CF"), '=', ir.constant_operand(0))]
+    elif m == "CLD":
+      IR = [ir.operation(self.DR("DF"), '=', ir.constant_operand(0))]
+    elif m == "CMP":
+      preload = True
+      IR = [ir.operation(operands[0][1],'-',operands[1][1])]
+    elif m == "DEC":
+      IR = [ir.operation(operands[0][1],'=',operands[0][1],'-',ir.constant_operand(1))]      
+    elif m == "INC":
+      IR = [ir.operation(operands[0][1],'=',operands[0][1],'+',ir.constant_operand(1))]      
+    elif m == "IMUL":
+      #XXXXX TODO FIX ME
+      #EDX:EAX = a*b || 
+      IR = [ir.operation(operands[0][1], '=', operands[0][1], '*', operands[1][1])]
+      if operands[0][1].register_name == 'eax':
+        #TODO SIZE
+        IR += [ir.operation(self.DR("EDX"), '=', '(', operands[0][1], '*', operands[1][1], ')', '>>', ir.constant_operand(32))]
+    elif m == "JMP":
+      #absolute jump vs relative jump
+      if 'rel' in operands[0][0]:
+        IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1]),
+               ir.jump("tval")]
       else:
-        RegTwo = None
+        IR += [ir.jump(operands[0][1])]
+    elif 'J' == m[0]:
       
-      Immediate = None
-      if instruction['immediate']:
-        #XXXX signedness
-        if DBG: print instruction['immediate'], OPmode
-        strings = {'ib': 1, 'iw' : 2, 'id': 4, 'iq': 8}
-        sz = strings[instruction['immediate']]
-        imm = get_imm(sz, 0, data)
-        data = data[sz:]
-      
-      code_offset = None
-      if instruction['code_offset']:
-        if DBG: print instruction['code_offset'], OPmode
-        strings = {'cb': 1, 'cw' : 2, 'cd': 4, 'cq': 8, 'm64': 8}
-        sz = strings[instruction['code_offset']]
-        code_offset = get_imm(sz, 0, data)
-        data = data[sz:]
+      if m == "JO":
+        IR = [ir.operation(self.DR('OF'),'==',ir.constant_operand(1))]
+      elif m == "JNO":
+        IR = [ir.operation(self.DR('OF'),'==',ir.constant_operand(0))]
+      elif m == "JB":
+        IR = [ir.operation(self.DR('CF'),'==',ir.constant_operand(1))]
+      elif m == "JNC":
+        IR = [ir.operation(self.DR('CF'),'==',ir.constant_operand(0))]
+      elif m == "JBE":
+        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("CF"), '==', ir.constant_operand(1))]
+      elif m == "JNBE":
+        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(0), '&&', self.DR("CF"), '==', ir.constant_operand(0))]
+      elif m == "JS":
+        IR = [ir.operation(self.DR('SF'),'==',ir.constant_operand(1))]
+      elif m == "JNS":
+        IR = [ir.operation(self.DR('SF'),'==',ir.constant_operand(0))]
+      elif m == "JP":
+        IR = [ir.operation(self.DR('PF'),'==',ir.constant_operand(1))]
+      elif m == "JNP":
+        IR = [ir.operation(self.DR('PF'),'==',ir.constant_operand(0))]
+      elif m == "JL":
+        IR = [ir.operation(self.DR('SF'),'!=',self.DR('OF'))]
+      elif m == "JNL":
+        IR = [ir.operation(self.DR('SF'),'==',self.DR('OF'))]
+      elif m == "JLE":
+        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("SF"), '!=', self.DR("OF"))]
+      elif m == "JNLE":
+        IR = [ir.operation(self.DR('ZF'),'=',ir.constant_operand(0), '&&', self.DR("SF"), '==', self.DR("OF"))]
+      elif m == "JNZ":
+        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1))]
+      elif m == "JZ":
+        IR = [ir.operation(self.DR('ZF'), '==', ir.constant_operand(0))]      
 
-      mem_addr = None
-      #check for memory offsets in operand ( MOV A3 opcode, etc)
-      for oper in instruction['operands']:
-        if 'moffset%d'%OPmode in oper:
-          sz = OPmode/8
-          mem_addr = get_imm(sz, 0, data)
-          data = data[sz:]
-      
-      string = instruction['mnemonic']
-      
-      #destination comes first followed by others
-      operands = []
-      for operand in instruction['operands']:
-        if operand == "reg/mem32":
-          pass
-      
-      print RegOne, RegTwo, Offset, Immediate, code_offset, mem_addr, instruction['operands']
-      return len(orig)-len(data), string
-      
-      
-      
-    prefixbytes, prefixes = decodePrefix(data)
+      if 'rel' in operands[0][0]:
+        IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1]),
+               ir.jump("tval")]
+      else:
+        IR += [ir.jump(operands[0][1])]
+
+    elif m == "LEA":
+      ir.operation(operands[0][1], '=', self.DR("TMEM"))
+    elif m == "LEAVE":
+      # mov esp, ebp
+      # pop ebp
+      IR = [ir.operation(self.DR("ESP"),'=',self.DR("EBP")),
+            ir.load(self.DR("EBP")), 
+            ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))
+           ]
+    elif m == "MOV":
+      IR = [ir.operation(operands[0][1], '=', operands[1][1])]
+    elif m == "MOVSX":
+      #XXXXXX TODO sign extend
+      IR = [ir.operation(operands[0][1], '=', operands[1][1])]      
+    elif m == "MOVZX":
+      if '16' in operands[1][0]:
+        mask = 0xff
+      else:
+        mask = 0xffff
+      IR = [ir.operation(operands[0][1], '=', operands[1][1], '&', mask)]
+    elif m == "NOT":
+      IR = [ir.operation(operands[0][1],'=','~',operands[0][1])]
+    elif m == "OR":
+      IR = [ir.operation(operands[0][1],'=',operands[0][1],'|',operands[1][1])]
+    elif m == "POP":
+      IR = [ir.operation(self.DR("ESP",OPmode)), 
+            ir.load(operands[0][1]), 
+            ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))]
+    elif m == "PUSH":
+      IR = [ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"-",ir.constant_operand(4)),
+            ir.store(operands[0][1]),
+            ]
+    elif m == "RET":
+      #pop eip
+      IR = [ir.operation(self.DR('ESP')),
+            ir.load(self.DR('TVAL')),
+            ir.operation(self.DR('ESP'),'=',self.DR("ESP"),'-',ir.constant_operand(4)),
+            ir.ret(self.DR('TVAL'))]
+    elif m == "ROL":
+      #XXX TODO FIX sz here
+      sz = operands[0][1].size
+      IR = [ir.operation(operands[0][1], '=', operands[0][1], '<<', operands[1][1], '|', operands[0][1],'>>', '(', ir.constant_operand(sz),'-',operands[1][1],')')]
+    elif m == "ROR":
+      sz = operands[0][1].size
+      IR = [ir.operation(operands[0][1], '=', operands[0][1], '>>', operands[1][1], '|', operands[0][1],'<<', '(', ir.constant_operand(sz),'-',operands[1][1],')')]
+    elif m == "SAL":
+      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '<<', ir.operation(32), '+', operands[0][1], ')','<<',operands[1][1])]
+    elif m == "SAR":
+      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '<<', ir.operation(32), '+', operands[0][1], ')','>>',operands[1][1])]
+    elif m == "SHL":
+      IR = [ir.operation(operands[0][1],'=', operands[0][1],'<<',operands[1][1])]
+    elif m == "SHR":
+      IR = [ir.operation(operands[0][1],'=', operands[0][1],'>>',operands[1][1])]
+    elif m == "SUB":
+      IR = [ir.operation(operands[0][1],'=', operands[0][1],'-',operands[1][1])]
+    elif m == "TEST":
+      IR = [ir.operation(operands[0][1],'&',operands[1][1])]
+    elif m == "XCHG":
+      have_nop = 0
+      if operands[0][1].type == 'register' and operands[1][1].type == 'register':
+        if operands[0][1].register_name == "eax" and operands[1][1].register_name == "eax":
+          have_nop = 1
+          
+      #TODO does not play well with TMEM
+      if have_nop:
+        IR = [ir.operation("NOP")]
+      else:
+        IR = [ir.operation(self.DR("tval"),'=',operands[0][0]),
+              ir.operation(operands[0][0],'=', operands[0][1]),
+              ir.operation(operands[0][1],'=', self.DR("tval"))]
+    elif m == "XOR":
+      IR = [ir.operation(operands[0][1],'=', operands[0][1],'^',operands[1][1])]
+    else:
+      IR = [ir.unhandled_instruction(instruction['mnemonic'])]
+    if TMEM_IR:
+      if preload: #LOAD from TMEM into TMEM
+        return TMEM_IR + [ir.load("TMEM", size=OPmode/8)] + IR
+      else: #STORE IR result @ TMEM
+        return TMEM_IR + IR + [ir.store("TMEM", size=OPmode/8)]
+    
+    return IR
+  
+  def disassemble(self, data, addr): 
+    """translate x86 bytecode into IR"""
+    prefixbytes, prefixes = self.decodePrefix(data)
+    
+    OPmode = self.mode
+    ADDRmode = self.mode
+    #TODO do we need to handle 16-bit?
+    for p in prefixes:
+      if 'opsize' in prefixes[p]:
+        OPmode = self.mode/2
+      elif 'addrsz' in prefixes[p]:
+        ADDRmode = self.mode/2
+    
     data = data[len(prefixbytes):]
-    length, IR = decode_opcode(prefixes, data)
+    OP = ord(data[0])
+    sz, instruction = self.decode_opcode(data, ADDRmode)
+    data = data[sz:]
 
-    return length + len(prefixbytes), IR
+    a = self.decode_operands(OP, instruction, data, OPmode)
+    #print instruction['mnemonic'], a
+    opsz, operands, TMEM_IR = a
+    data = data[opsz:]
+    
+    IR = self.makeIR(instruction, sz+opsz, operands, TMEM_IR, OPmode)
+    #print sz+opsz, instruction['mnemonic'], operands,'\n-->', IR
+    for y in IR:
+      y.address = addr
+    return sz + opsz + len(prefixbytes), IR
 
-    #default segments
-    #ds -> immediate
-    #ds/es (can not override es)
-  
+########### end disassembler code   ####################
+
   def translate(self, target):
     IRS = []
     
@@ -320,10 +561,10 @@ class X86_Translator:
             data = data+"\x00"*15
 
           #print "disassemble @ %x : %r"%(addr,data)          
-          print "\n",hex(addr), [hex(ord(x)) for x in data]
+          #print "\n",hex(addr), [hex(ord(x)) for x in data]
           sz, IR = self.disassemble(data, addr)
-          print sz, IR
-          #raw_input()
+          #print sz, "IRIR=",IR
+          print hex(addr), IR
           addr += sz
           
     return IRS
