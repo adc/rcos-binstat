@@ -3,8 +3,8 @@ import ir
 class CodeBlock:
   def __init__(self, code):
     self.code = code
-    self.start = code[0].address
-    self.end = code[-1].address
+    self.start = code[0].address & 0xffffffff
+    self.end = code[-1].address & 0xffffffff
 
     self.next = 0
     self.branch = 0
@@ -36,7 +36,7 @@ class CodeBlock:
     return CodeBlock(bottom)
 
 def CBcmp(a,b):
-  return a.start - b.start
+  return int(a.start - b.start) 
 
 def is_stack_sub(x):
   #look for stack pointer
@@ -124,6 +124,7 @@ def make_blocks(code):
     
     if instr.type == "branch_true":
       dest = instr.dest.value + instr.address
+      dest = dest & 0xffffffff
       for i in range(0, len(blocks)):
         #split the destination 
         if blocks[i].start < dest and blocks[i].end >= dest:
@@ -162,7 +163,7 @@ def make_blocks(code):
 
 def graph_function(code):
   blocks = make_blocks(code)
-  
+
   o = "digraph function_0x%x {\n"%(code[0].address)  
   for b in blocks:
     c = "\n".join(["0x%x: %s"%(instr.address,repr(instr)) for instr in b.code])
@@ -176,7 +177,7 @@ def graph_function(code):
       o += "    block_%s -> block_0x%x;\n"%(hex(b.start), b.branch)
   o += "}\n"
   open("graphs/%x.dot"%code[0].address,'w').write(o)
-  return 
+  #return 
   
   for b in blocks:
     print "********", hex(b.start), '-', hex(b.end), "********"
@@ -186,7 +187,7 @@ def graph_function(code):
       print hex(instr.address), instr
     print ""
   #sweep 2, draw connections
-
+  
 def make_flow_graph(code):
   if not code:
     return
@@ -198,7 +199,7 @@ def make_flow_graph(code):
     graph_function(f[func])
     #print "#######\n\n\n"
 
-"""
+  """
   for n in code:
     if isinstance(n, ir.jump):
       print "0x%x:    "%n.address,n
@@ -210,4 +211,4 @@ def make_flow_graph(code):
       print "0x%x:    "%n.address,n
     elif isinstance(n, ir.ret):
       print "0x%x:    "%n.address,n    
-"""
+  """

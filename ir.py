@@ -182,9 +182,7 @@ class constant_operand(operand):
     operand.__init__(self, "constant")
     self.size = size
     self.signed = signed
-    
     #todo: exceptions on overflows?
-
     #make sure it fits inside of 'size' bytes
     if signed:
       #truncate values to fit size bytes and make sure
@@ -196,7 +194,6 @@ class constant_operand(operand):
     else:
       #truncate values to fit size bytes
       value = value & ((256**size)-1)    
-    
     self.value = value
 
   def __repr__(self):

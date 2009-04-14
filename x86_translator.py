@@ -140,11 +140,11 @@ class X86_Translator:
     #helper functions
     def get_imm(sz, offset, data, signed=1):
       if sz == 1:
-        return ir.constant_operand(ord(data[offset]), signed=signed)
+        return ir.constant_operand(ord(data[offset]), size=sz, signed=signed)
       elif sz == 2:
-        return ir.constant_operand(struct.unpack('<H',data[offset:offset+2])[0], signed=signed)
+        return ir.constant_operand(struct.unpack('<H',data[offset:offset+2])[0], size=sz, signed=signed)
       elif sz == 4:
-        return ir.constant_operand(struct.unpack('<L',data[offset:offset+4])[0], signed=signed)
+        return ir.constant_operand(struct.unpack('<L',data[offset:offset+4])[0], size=sz, signed=signed)
       else:
         raise Exception("bad imm value")
     #####
@@ -174,27 +174,28 @@ class X86_Translator:
       if mod == 0:
         if reg1 == 5:
           #[displacement]
-          TMEM_IR = [ir.operation(get_imm(mode/8, sz, data))]
-          reg_mem = self.DR("TMEM", mode)
+          TMEM_IR = [ir.operation(self.DR("TMEM",mode), '=', get_imm(mode/8, sz, data))]
+          reg_mem = self.DR("TVAL", mode)
+          sz += mode/8          
         else:
           #[reg1] -> store into temporary memory
           RegOne = self.DR(modrm & 7, mode)
           TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=',RegOne)]
-          reg_mem = self.DR("TMEM", mode)
+          reg_mem = self.DR("TVAL", mode)
       elif mod == 1:
         #[reg+ib]
         RegOne = self.DR(modrm & 7, mode)
         Offset = get_imm(1, sz, data)
 
         TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=',RegOne,'+', Offset)]
-        reg_mem = self.DR("TMEM", mode)
+        reg_mem = self.DR("TVAL", mode)
         sz += 1
       elif mod == 2:
         #[reg+mode_offset]
         RegOne = self.DR(modrm & 7, mode)
         Offset = get_imm(mode/8, sz, data)
         TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=',RegOne,'+', Offset)]
-        reg_mem = self.DR("TMEM", mode)
+        reg_mem = self.DR("TVAL", mode)
         sz += mode/8
       elif mod == 3:
         #reg + reg
@@ -235,7 +236,6 @@ class X86_Translator:
           oplist += ['+',Offset]
           
         TMEM_IR = [ir.operation(*oplist)]
-        
 
       reg = RegTwo
       
@@ -332,7 +332,7 @@ class X86_Translator:
     
     return ir.register_operand(regname, register)
   
-  def makeIR(self, instruction, size, operands, TMEM_IR, OPmode):
+  def makeIR(self, instruction, size, operands, TMEM_IR, OPmode, addr):
     """
     instruction -> dictionary of instruction information
     operands -> list of operand type and value
@@ -342,12 +342,16 @@ class X86_Translator:
     #print "-----make IR ------"
     m = instruction['mnemonic']
     
+    preload = False
+    poststore = False
     #figure out if TMEM_IR is LOAD or STORE
-    preload = True
     if TMEM_IR:
       #first operand is destination
       if 'reg/mem' in operands[0][0]:
-        preload = False
+        preload = True
+        poststore = True
+      elif 'reg/mem' in operands[1][0]:
+        preload = True
 
     IR = []
     if m == "ADC":
@@ -357,6 +361,9 @@ class X86_Translator:
     elif m == "AND":
       IR = [ir.operation(operands[0][1],'=',operands[0][1],'&',operands[1][1])]
     elif m == "CALL":
+      if poststore:
+        poststore = False
+
       IR = [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",ir.constant_operand(size)),
             ir.operation(self.DR("ESP",OPmode),'=',self.DR("ESP"),'-',ir.constant_operand(4)),
             ir.store(self.DR("tval"))]
@@ -373,7 +380,8 @@ class X86_Translator:
     elif m == "CLD":
       IR = [ir.operation(self.DR("DF"), '=', ir.constant_operand(0))]
     elif m == "CMP":
-      preload = True
+      if poststore:
+        poststore = False
       IR = [ir.operation(operands[0][1],'-',operands[1][1])]
     elif m == "DEC":
       IR = [ir.operation(operands[0][1],'=',operands[0][1],'-',ir.constant_operand(1))]      
@@ -387,6 +395,8 @@ class X86_Translator:
         #TODO SIZE
         IR += [ir.operation(self.DR("EDX"), '=', '(', operands[0][1], '*', operands[1][1], ')', '>>', ir.constant_operand(32))]
     elif m == "JMP":
+      if poststore:
+        poststore = False
       #absolute jump vs relative jump
       if 'rel' in operands[0][0]:
         IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1]),
@@ -394,47 +404,50 @@ class X86_Translator:
       else:
         IR += [ir.jump(operands[0][1])]
     elif 'J' == m[0]:
+      #IR = [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1])]
+      DEST = ir.constant_operand(int(size + operands[0][1].value))
       
+      IR = []
       if m == "JO":
-        IR = [ir.operation(self.DR('OF'),'==',ir.constant_operand(1))]
+        IR += [ir.operation(self.DR('OF'),'==',ir.constant_operand(1))]
       elif m == "JNO":
-        IR = [ir.operation(self.DR('OF'),'==',ir.constant_operand(0))]
+        IR += [ir.operation(self.DR('OF'),'==',ir.constant_operand(0))]
       elif m == "JB":
-        IR = [ir.operation(self.DR('CF'),'==',ir.constant_operand(1))]
+        IR += [ir.operation(self.DR('CF'),'==',ir.constant_operand(1))]
       elif m == "JNC":
-        IR = [ir.operation(self.DR('CF'),'==',ir.constant_operand(0))]
+        IR += [ir.operation(self.DR('CF'),'==',ir.constant_operand(0))]
       elif m == "JBE":
-        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("CF"), '==', ir.constant_operand(1))]
+        IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("CF"), '==', ir.constant_operand(1))]
       elif m == "JNBE":
-        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(0), '&&', self.DR("CF"), '==', ir.constant_operand(0))]
+        IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(0), '&&', self.DR("CF"), '==', ir.constant_operand(0))]
       elif m == "JS":
-        IR = [ir.operation(self.DR('SF'),'==',ir.constant_operand(1))]
+        IR += [ir.operation(self.DR('SF'),'==',ir.constant_operand(1))]
       elif m == "JNS":
-        IR = [ir.operation(self.DR('SF'),'==',ir.constant_operand(0))]
+        IR += [ir.operation(self.DR('SF'),'==',ir.constant_operand(0))]
       elif m == "JP":
-        IR = [ir.operation(self.DR('PF'),'==',ir.constant_operand(1))]
+        IR += [ir.operation(self.DR('PF'),'==',ir.constant_operand(1))]
       elif m == "JNP":
-        IR = [ir.operation(self.DR('PF'),'==',ir.constant_operand(0))]
+        IR += [ir.operation(self.DR('PF'),'==',ir.constant_operand(0))]
       elif m == "JL":
-        IR = [ir.operation(self.DR('SF'),'!=',self.DR('OF'))]
+        IR += [ir.operation(self.DR('SF'),'!=',self.DR('OF'))]
       elif m == "JNL":
-        IR = [ir.operation(self.DR('SF'),'==',self.DR('OF'))]
+        IR += [ir.operation(self.DR('SF'),'==',self.DR('OF'))]
       elif m == "JLE":
-        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("SF"), '!=', self.DR("OF"))]
+        IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("SF"), '!=', self.DR("OF"))]
       elif m == "JNLE":
-        IR = [ir.operation(self.DR('ZF'),'=',ir.constant_operand(0), '&&', self.DR("SF"), '==', self.DR("OF"))]
+        IR += [ir.operation(self.DR('ZF'),'=',ir.constant_operand(0), '&&', self.DR("SF"), '==', self.DR("OF"))]
       elif m == "JNZ":
-        IR = [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1))]
+        IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1))]
       elif m == "JZ":
-        IR = [ir.operation(self.DR('ZF'), '==', ir.constant_operand(0))]      
+        IR += [ir.operation(self.DR('ZF'), '==', ir.constant_operand(0))]      
 
       if 'rel' in operands[0][0]:
-        IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1]),
-               ir.jump("tval")]
+        IR += [ir.branch_true(DEST)]
       else:
-        IR += [ir.jump(operands[0][1])]
-
+        IR += [ir.branch_true(operands[0][1])]
     elif m == "LEA":
+      preload = False
+      poststore = False
       ir.operation(operands[0][1], '=', self.DR("TMEM"))
     elif m == "LEAVE":
       # mov esp, ebp
@@ -444,7 +457,14 @@ class X86_Translator:
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))
            ]
     elif m == "MOV":
-      IR = [ir.operation(operands[0][1], '=', operands[1][1])]
+      if preload:
+        if operands[1][1].type != 'register' or operands[1][1].register_name != 'tval':
+          preload = False
+        
+      if operands[0][1].type == 'register' and operands[0][1].register_name == 'tval':
+        IR = [ir.operation(operands[1][1])]
+      else:
+        IR = [ir.operation(operands[0][1], '=', operands[1][1])]
     elif m == "MOVSX":
       #XXXXXX TODO sign extend
       IR = [ir.operation(operands[0][1], '=', operands[1][1])]      
@@ -463,6 +483,9 @@ class X86_Translator:
             ir.load(operands[0][1]), 
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))]
     elif m == "PUSH":
+      if operands[0][1].type == 'register' and operands[0][1].register_name != 'tval':
+        poststore = False
+
       IR = [ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"-",ir.constant_operand(4)),
             ir.store(operands[0][1]),
             ]
@@ -501,6 +524,7 @@ class X86_Translator:
       if have_nop:
         IR = [ir.operation("NOP")]
       else:
+        #XXXXX TODO TMEM
         IR = [ir.operation(self.DR("tval"),'=',operands[0][0]),
               ir.operation(operands[0][0],'=', operands[0][1]),
               ir.operation(operands[0][1],'=', self.DR("tval"))]
@@ -508,11 +532,22 @@ class X86_Translator:
       IR = [ir.operation(operands[0][1],'=', operands[0][1],'^',operands[1][1])]
     else:
       IR = [ir.unhandled_instruction(instruction['mnemonic'])]
+
     if TMEM_IR:
-      if preload: #LOAD from TMEM into TMEM
-        return TMEM_IR + [ir.load("TMEM", size=OPmode/8)] + IR
-      else: #STORE IR result @ TMEM
-        return TMEM_IR + IR + [ir.store("TMEM", size=OPmode/8)]
+      #print "@@"#, preload, poststore, TMEM_IR
+      
+      out = []
+      if preload:
+        out += TMEM_IR + [ir.load(self.DR("tval"))]
+      if poststore:
+        #XXX implicit load store hack
+        if len(IR[0].ops) == 1:
+          IR = [ir.operation(self.DR('tval'),'=', *(IR[0].ops))]
+        out += IR + TMEM_IR + [ir.store(self.DR("tval"))]
+      else:
+        out += IR
+                      
+      return out
     
     return IR
   
@@ -539,7 +574,7 @@ class X86_Translator:
     opsz, operands, TMEM_IR = a
     data = data[opsz:]
     
-    IR = self.makeIR(instruction, sz+opsz, operands, TMEM_IR, OPmode)
+    IR = self.makeIR(instruction, sz+opsz, operands, TMEM_IR, OPmode, addr)
     #print sz+opsz, instruction['mnemonic'], operands,'\n-->', IR
     for y in IR:
       y.address = addr
@@ -549,6 +584,12 @@ class X86_Translator:
 
   def translate(self, target):
     IRS = []
+    
+    def getnasm(data):
+      open("/tmp/x.asm",'w').write(data)
+      import os
+      os.system("ndisasm -u /tmp/x.asm > /tmp/x.asm.out")
+      return open("/tmp/x.asm.out",'r').readlines()[0].strip()
     
     for seg in target.memory.segments:
       if seg.code:
@@ -562,9 +603,13 @@ class X86_Translator:
 
           #print "disassemble @ %x : %r"%(addr,data)          
           #print "\n",hex(addr), [hex(ord(x)) for x in data]
-          sz, IR = self.disassemble(data, addr)
+          try:
+            sz, IR = self.disassemble(data, addr)
+          except InvalidInstruction:
+            break
           #print sz, "IRIR=",IR
-          print hex(addr), IR
+          #print hex(addr), IR#, getnasm(data)
+          IRS += IR
           addr += sz
           
     return IRS

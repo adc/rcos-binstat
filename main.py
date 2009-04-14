@@ -41,8 +41,6 @@ class Binparser:
     else:
       return []
 
-
-
 if __name__ == "__main__":
   import sys
   fn = sys.argv[1]
@@ -59,5 +57,5 @@ if __name__ == "__main__":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
     IR_rep = x86.translate(bin)    
-
+  
   graphs.make_flow_graph(IR_rep)
