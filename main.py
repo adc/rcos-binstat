@@ -2,6 +2,12 @@ import elf
 import ir
 import graphs
 
+try:
+  from macholib.MachO import MachO
+  import macholib
+except:
+  macholib = None
+  
 class Binparser:
   def __init__(self, filename):
     self.filename = filename
@@ -16,7 +22,7 @@ class Binparser:
     data = open(self.filename).read()
     self.data = data
 
-    if "ELF":
+    if "ELF" in data[:4]:
       kipler = elf.Elf(data)
       codesegments = []
       for s in kipler.Phdrs:
@@ -34,10 +40,57 @@ class Binparser:
         self.architecture = "386"        
 
       self.binformat = kipler
+    elif "\xca\xfe\xba\xbe" in data[:4]:
+      if not macholib:
+        raise Exception("Missing MachO")
+      CPU_TYPE_X86 = 7
+      READ = 1; WRITE = 2; EXEC = 4
+      
+      self.data = open(self.filename,'rb').read()
+      fat = MachO(self.filename)
+
+      macho_header = None
+      for arch in fat.headers:
+       if arch.header.cputype == CPU_TYPE_X86:
+         macho_header = arch
+         break
+      if not macho_header:
+       raise Exception("Couldn't find x86 header")
+      
+      #only 386 for now
+      self.architecture = "386"
+      for cmd in macho_header.commands:
+        if type(cmd[1]) == macholib.mach_o.segment_command:
+          fake_start = cmd[1].fileoff
+        if fake_start == 0:
+          fake_start = cmd[1].vmaddr          
+          seg = ir.segment(cmd[1].vmaddr, cmd[1].vmaddr+cmd[1].vmsize, 
+               data[fake_start : fake_start + cmd[1].filesize], 
+               cmd[1].initprot)
+          if seg.prot & EXEC:
+            seg.code = 1
+        self.memory.add( seg )
+        
+      self.binformat = macho_header
+      self.binformat.name = "macho"      
+    else:
+      raise Exception("- unknown binary format")
   
   def find_entry_points(self):
     if self.binformat.name == "ELF":
       return [self.binformat.e_entry]
+    elif self.binformat.name == "macho":
+      eip = None
+      import struct
+      for cmd in self.binformat.commands:
+        if type(cmd[1]) == macholib.mach_o.thread_command:
+          regs = struct.unpack("<LLLLLLLLLLLLLLLLLL",cmd[2])
+          flavor, count = regs[:2]
+          regs = regs[2:]
+
+          eip = regs[10]
+      del struct
+      return [eip]
     else:
       return []
 
@@ -56,6 +109,8 @@ if __name__ == "__main__":
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
-    IR_rep = x86.translate(bin)    
+    IR_rep = x86.translate(bin)
+  else:
+    print "UNKNOWN ARCHITECTURE", bin.architecture
   
   graphs.make_flow_graph(IR_rep)

@@ -53,6 +53,7 @@ class MIPS_Translator:
     
   def decode_register(self, reg):
     R = None
+    name = reg
     if type(reg) == str:
       for r in self.registers:
         if reg in r.aliases:
@@ -61,6 +62,7 @@ class MIPS_Translator:
       if not R:
         raise KeyError("DR: Unknown register: %s"%reg)
     else:
+      name = "$%d"%name
       for r in self.registers:
         if "$%d"%reg in r.aliases:
           R = r
@@ -69,7 +71,7 @@ class MIPS_Translator:
         raise KeyError("DR: Unknown register: $%d"%reg)
 
         
-    return ir.register_operand(R)
+    return ir.register_operand(name, R)
 
   def get_r_type(self, opcode):
     function = opcode & 0x3f
@@ -402,7 +404,10 @@ class MIPS_Translator:
         #do value propagation within a block
         propreg = {}
         for r in self.registers:
-          propreg[r.register_name] = 0
+          if r.register_name == "$32":
+            propreg['$pc'] = 0
+          else:
+            propreg[r.register_name] = 0
         
         for z in block.code:
           if z.type == "operation":
