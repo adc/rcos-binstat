@@ -444,3 +444,67 @@ def mips_resolve_external_funcs(go):
     Esym = Elf32Sym(go.memory[addr:addr+16], go.binformat.endianness)
   
   return funcs
+  
+def nix_resolve_external_funcs(go):
+  #linux x86 32 helper  
+  def lookup_rel(go, r, symtab, strtab):
+    r_type  = r.r_info & 0xff
+    pos = r.r_info >> 8
+    addr = r.r_offset
+
+    symbol = Elf32Sym( go.memory[symtab+pos*16 :  symtab+pos*16 + 16])
+    if(symbol.st_name):
+      string_ptr = symbol.st_name + strtab
+      name = ""
+      byte = go.memory[string_ptr]
+
+      while byte != "\x00":
+        name += byte
+        string_ptr += 1
+        byte = go.memory[string_ptr]
+      return name
+
+    else:
+      return "!unknown"
+
+  #linux x86 32 helper  
+  def getplt(go, addr):
+    Edyn = Elf32Dyn( go.memory[addr: addr+8] ) #8 bytes of data, d_tag/d_val
+  
+    pltrelsz = 0
+    jmprel = None
+    symtab = None
+    strtab = None
+  
+    while Edyn.d_tag != DT_NULL:
+      if Edyn.d_tag == DT_PLTRELSZ:
+        pltrelsz = Edyn.d_val
+      elif Edyn.d_tag == DT_JMPREL:
+        jmprel = Edyn.d_val
+      elif Edyn.d_tag == DT_SYMTAB:
+        symtab = Edyn.d_val
+      elif Edyn.d_tag == DT_STRTAB:
+        strtab = Edyn.d_val       
+    
+      addr += 8
+      Edyn = Elf32Dyn( go.memory[addr : addr+8] )
+    
+    # retrieve the PLT now
+    addr = jmprel
+    while addr < jmprel + pltrelsz:
+      rel = Elf32Rel( go.memory[addr : addr+ 8] )
+      name = go.lookup_rel(rel, symtab, strtab)
+      val = struct.unpack("<L",go.memory[rel.r_offset: rel.r_offset +4])[0]-6
+      #print "Func plt_%s @ %x"%(name, val)
+      f[val] = name
+      addr += 8
+  
+  addr = 0
+  for p in go.binformat.Phdrs:
+    if p.type == PT_DYNAMIC:
+      addr = dynp.vaddr
+      break
+  if addr:
+    return getplt(go, addr)
+  else:
+    return {}

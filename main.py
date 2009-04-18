@@ -109,6 +109,10 @@ if __name__ == "__main__":
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
+    if bin.binformat == "elf":
+      x86.external_functions = elf.nix_resolve_external_funcs(bin)
+      if not x86.external_functions:
+        print "[-] No dynamic functions, static binary?"
     IR_rep = x86.translate(bin)
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
