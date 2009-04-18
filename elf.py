@@ -493,7 +493,7 @@ def nix_resolve_external_funcs(go):
     addr = jmprel
     while addr < jmprel + pltrelsz:
       rel = Elf32Rel( go.memory[addr : addr+ 8] )
-      name = go.lookup_rel(rel, symtab, strtab)
+      name = lookup_rel(rel, symtab, strtab)
       val = struct.unpack("<L",go.memory[rel.r_offset: rel.r_offset +4])[0]-6
       #print "Func plt_%s @ %x"%(name, val)
       f[val] = name
