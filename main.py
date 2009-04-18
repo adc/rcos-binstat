@@ -117,4 +117,4 @@ if __name__ == "__main__":
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
   
-  #graphs.make_flow_graph(IR_rep)
+  graphs.make_flow_graph(IR_rep)

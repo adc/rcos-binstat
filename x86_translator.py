@@ -261,7 +261,11 @@ class X86_Translator:
     for oper in instruction['operands']:
       if 'moffset%d'%mode in oper:
         length = mode/8
-        mem_addr = get_imm(length, sz, data)
+        imm = get_imm(length, sz, data)
+        mem_addr = self.DR("TVAL", mode)        
+
+        TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=', imm)]
+
         sz += length      
 
     for oper in instruction['operands']:
@@ -351,6 +355,8 @@ class X86_Translator:
         preload = True
         poststore = True
       elif 'reg/mem' in operands[1][0]:
+        preload = True
+      elif 'moffset' in operands[1][0]:
         preload = True
 
     IR = []
@@ -457,9 +463,11 @@ class X86_Translator:
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))
            ]
     elif m == "MOV":
+      #print hex(addr), operands
       if preload:
-        if operands[1][1].type != 'register' or operands[1][1].register_name != 'tval':
-          preload = False
+        if 'moffset' not in operands[1][0]:
+          if operands[1][1].type != 'register' or operands[1][1].register_name != 'tval':
+            preload = False
         
       if operands[0][1].type == 'register' and operands[0][1].register_name == 'tval':
         IR = [ir.operation(operands[1][1])]
