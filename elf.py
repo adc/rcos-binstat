@@ -469,6 +469,7 @@ def nix_resolve_external_funcs(go):
 
   #linux x86 32 helper  
   def getplt(go, addr):
+    funcs = {}
     Edyn = Elf32Dyn( go.memory[addr: addr+8] ) #8 bytes of data, d_tag/d_val
   
     pltrelsz = 0
@@ -493,16 +494,17 @@ def nix_resolve_external_funcs(go):
     addr = jmprel
     while addr < jmprel + pltrelsz:
       rel = Elf32Rel( go.memory[addr : addr+ 8] )
-      name = lookup_rel(rel, symtab, strtab)
+      name = lookup_rel(go, rel, symtab, strtab)
       val = struct.unpack("<L",go.memory[rel.r_offset: rel.r_offset +4])[0]-6
       #print "Func plt_%s @ %x"%(name, val)
-      f[val] = name
+      funcs[val] = name
       addr += 8
-  
+    return funcs
+
   addr = 0
   for p in go.binformat.Phdrs:
     if p.type == PT_DYNAMIC:
-      addr = dynp.vaddr
+      addr = p.vaddr
       break
   if addr:
     return getplt(go, addr)

@@ -109,7 +109,7 @@ if __name__ == "__main__":
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
-    if bin.binformat == "elf":
+    if bin.binformat.name == "ELF":
       x86.external_functions = elf.nix_resolve_external_funcs(bin)
       if not x86.external_functions:
         print "[-] No dynamic functions, static binary?"
@@ -117,4 +117,4 @@ if __name__ == "__main__":
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
   
-  graphs.make_flow_graph(IR_rep)
+  #graphs.make_flow_graph(IR_rep)
