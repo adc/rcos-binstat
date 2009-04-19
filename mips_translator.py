@@ -372,7 +372,6 @@ class MIPS_Translator:
       LOAD $25
       CALL $25
     """
-    callgraph = {}
     
     #pull out GP from REGINFO XXX this is not correct
     GP = 0
@@ -386,12 +385,11 @@ class MIPS_Translator:
     
     print "GP = ", hex(GP)
     
+    callgraph = {}
     f = graphs.linear_sweep_split_functions(IR)
     for func in f:
       callgraph[func] = graphs.make_blocks(f[func])
-
     
-    prev = None
     sg = callgraph.keys()
     sg.sort()
     for func in sg:
@@ -402,6 +400,7 @@ class MIPS_Translator:
         print "branches: ",hex(block.next), hex(block.branch)
         
         #do value propagation within a block
+        prev = None
         propreg = {}
         for r in self.registers:
           if r.register_name == "$32":

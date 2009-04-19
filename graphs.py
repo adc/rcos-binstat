@@ -57,7 +57,7 @@ def is_stack_sub(x):
         return
       
       if value < 0:
-        return 1
+        return value
   return 0
 
 
@@ -73,7 +73,7 @@ def linear_sweep_split_functions(code):
     prev = func_start_addr
 
     if x.type == "operation":
-      if is_stack_sub(x):
+      if is_stack_sub(x) < -4:
         func_start_addr = x.address
     
     if prev != func_start_addr:
@@ -123,8 +123,11 @@ def make_blocks(code):
             
     
     if instr.type == "branch_true":
+      mask = 0xffffffff
+      if instr.dest.signed:
+        mask = 0x7fffffff
       dest = instr.dest.value + instr.address
-      dest = dest & 0xffffffff
+      dest = dest & mask
       for i in range(0, len(blocks)):
         #split the destination 
         if blocks[i].start < dest and blocks[i].end >= dest:
@@ -150,7 +153,11 @@ def make_blocks(code):
     instr = blocks[i].code[-1]
     dest = 0
     if instr.type == "branch_true":
+      mask = 0xffffffff
+      if instr.dest.signed:
+        mask = 0x7fffffff
       dest = instr.dest.value + instr.address
+      dest = int(dest & mask)
       blocks[i].branch = dest
     
     if dest:
@@ -168,16 +175,17 @@ def graph_function(code):
   for b in blocks:
     c = "\n".join(["0x%x: %s"%(instr.address,repr(instr)) for instr in b.code])
     s = "%r"%c
+    s.replace('"', "\"")
     if s[0] == '\'':
       s = '"' + s[1:-1] + '"'
-    o += "    block_%s [shape=box align=left label=%s];\n"%(hex(b.start), s)
+    o += "    block_0x%x [shape=box align=left label=%s];\n"%(b.start, s)
     if b.next:
-      o += "    block_%s -> block_0x%x;\n"%(hex(b.start), b.next)
+      o += "    block_0x%x -> block_0x%x;\n"%(b.start, b.next)
     if b.branch:
-      o += "    block_%s -> block_0x%x;\n"%(hex(b.start), b.branch)
+      o += "    block_0x%x -> block_0x%x;\n"%(b.start, b.branch)
   o += "}\n"
   open("graphs/%x.dot"%code[0].address,'w').write(o)
-  #return 
+  return 
   
   for b in blocks:
     print "********", hex(b.start), '-', hex(b.end), "********"

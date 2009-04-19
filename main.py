@@ -113,7 +113,11 @@ if __name__ == "__main__":
       x86.external_functions = elf.nix_resolve_external_funcs(bin)
       if not x86.external_functions:
         print "[-] No dynamic functions, static binary?"
+    else:
+      x86.external_functions = {}
     IR_rep = x86.translate(bin)
+
+    x86.libcall_transform(IR_rep, bin)
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
   

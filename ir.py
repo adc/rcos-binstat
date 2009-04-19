@@ -299,7 +299,10 @@ class branch_true(instruction):
   
   def __repr__(self):
     if self.relative:
-      return "BRANCH loc_"+hex(int(repr(self.dest))+int(repr(self.address)))+"     "+self.annotation
+      mask = 0xffffffff
+      if self.dest.signed:
+        mask = 0x7fffffff
+      return "BRANCH loc_"+hex((self.dest.value+self.address) & mask)+"     "+self.annotation
     else:
       return "BRANCH loc_"+hex(self.dest.value)+"     "+self.annotation
 

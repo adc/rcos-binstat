@@ -4,7 +4,8 @@ first jab is 32-bit modes, x86 core.
 import ir
 import struct
 import parsex86
-
+import graphs
+import elf
 
 X86DecodeTable = parsex86.get_decode_dict()
 
@@ -20,7 +21,7 @@ class X86_Translator:
       ir.register("esi:32-0", "si:16-0"),
       ir.register("edi:32-0", "di:16-0"),
       ir.register("ebp:32-0", "bp:16-0"),
-      ir.register("esp:32-0", "sp:16-0"),
+      ir.register("esp:32-0", "sp:16-0", "stack"),
       ir.register("eip:32-0", "ip:16-0"),
       ir.register("eflags:32-0", "id:21", "vip:20", 
                   "vif:19", "ac:18", "vm:17",
@@ -229,9 +230,9 @@ class X86_Translator:
           oplist.append(base_reg)
         if index_reg:
           if len(oplist):
-            oplist += ['+', index_reg, '*', 2**scale]
+            oplist += ['+', index_reg, '*', ir.constant_operand(2**scale)]
           else:
-            oplist += [index_reg,'*', 2**scale]
+            oplist += [index_reg,'*', ir.constant_operand(2**scale)]
         if Offset:
           oplist += ['+',Offset]
           
@@ -377,7 +378,7 @@ class X86_Translator:
       #absolute jump vs relative jump
       if 'rel' in operands[0][0]:
         IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1],'+',ir.constant_operand(size)),
-               ir.call("tval")
+               ir.call(self.DR("tval"))
               ]
       else:
         IR += [ir.call(operands[0][1])]
@@ -406,7 +407,7 @@ class X86_Translator:
       #absolute jump vs relative jump
       if 'rel' in operands[0][0]:
         IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1]),
-               ir.jump("tval")]
+               ir.jump(self.DR("tval"))]
       else:
         IR += [ir.jump(operands[0][1])]
     elif 'J' == m[0]:
@@ -481,7 +482,7 @@ class X86_Translator:
         mask = 0xff
       else:
         mask = 0xffff
-      IR = [ir.operation(operands[0][1], '=', operands[1][1], '&', mask)]
+      IR = [ir.operation(operands[0][1], '=', operands[1][1], '&', ir.constant_operand(mask))]
     elif m == "NOT":
       IR = [ir.operation(operands[0][1],'=','~',operands[0][1])]
     elif m == "OR":
@@ -511,9 +512,9 @@ class X86_Translator:
       sz = operands[0][1].size
       IR = [ir.operation(operands[0][1], '=', operands[0][1], '>>', operands[1][1], '|', operands[0][1],'<<', '(', ir.constant_operand(sz),'-',operands[1][1],')')]
     elif m == "SAL":
-      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '<<', ir.operation(32), '+', operands[0][1], ')','<<',operands[1][1])]
-    elif m == "SAR":
       IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '<<', ir.operation(32), '+', operands[0][1], ')','>>',operands[1][1])]
+    elif m == "SAR":
+      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '>>', ir.operation(32), '+', operands[0][1], ')','<<',operands[1][1])]
     elif m == "SHL":
       IR = [ir.operation(operands[0][1],'=', operands[0][1],'<<',operands[1][1])]
     elif m == "SHR":
@@ -585,7 +586,7 @@ class X86_Translator:
     IR = self.makeIR(instruction, sz+opsz, operands, TMEM_IR, OPmode, addr)
     #print sz+opsz, instruction['mnemonic'], operands,'\n-->', IR
     for y in IR:
-      y.address = addr
+      y.address = int("%d"%int(addr & 0xffffffff))
     return sz + opsz + len(prefixbytes), IR
 
 ########### end disassembler code   ####################
@@ -621,4 +622,96 @@ class X86_Translator:
           addr += sz
           
     return IRS
+    
+##############################################################
+  def libcall_transform(self, IR, bin):
+
+    callgraph = {}
+    f = graphs.linear_sweep_split_functions(IR)
+    for func in f:
+      callgraph[func] = graphs.make_blocks(f[func])
   
+    sg = callgraph.keys()
+    sg.sort()
+    for func in sg[1:]:
+      #print "====== func %x ====="%func
+      for block in callgraph[func]:
+        #print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
+        #print "parents: ",[hex(x) for x in block.parents]
+        #print "branches: ",hex(block.next), hex(block.branch)
+        
+        #propagate registers within a block
+        #eip is known based on code address
+        propreg = {}
+        for x in self.registers:
+          name = x.register_name
+          propreg[name] = 'Uninit'
+        prev = None
+        
+        for code in block.code:
+          annotation = ""
+          if code.type == 'operation':
+            if len(code.ops) > 1 and code.ops[1] == '=':
+              dest = code.ops[0].register.register_name
+              eval_str = ""
+              known = True
+              for n in code.ops[2::]:
+                if type(n) == str:
+                  eval_str += n
+                elif n.type == 'register':
+                  if n.register.register_name == 'eip':
+                    eval_str += str(code.address)
+                  else:
+                    val = propreg[n.register.register_name]
+                    if val == 'Uninit':
+                      known = False
+                      break
+                    eval_str += str(val)
+                else:
+                  eval_str += str(n.value)
+              value = False
+              if known:
+                value = eval(eval_str)
+                propreg[dest] = value
+              if value:
+                try:
+                  string_pull = elf.pull_ascii(bin.memory, value)
+                except IndexError:
+                  string_pull = ""
+                if len(string_pull) > 3:
+                  annotation = "@@@@@@ \"%r\""%string_pull
+                else:
+                  annotation = ">>>>>> "+hex(value)
+          elif code.type == 'load':
+            if prev:
+              if len(prev.ops) > 1:
+                if prev.ops[1] == '=':
+                  target = prev.ops[0]
+                else:
+                  ##TODO
+                  pass
+              else:
+                target = prev.ops[0]
+                  
+              name = target.register.register_name
+              val = propreg[name]
+              if val != 'Uninit':
+                if val in bin.memory:
+                  value = struct.unpack("<L", bin.memory[val:val+4])[0]
+                else:
+                  continue
+                dest =  code.dest.register.register_name
+                propreg[dest] = value
+                annotation = ">>>>>> "+hex(value)
+          elif code.type == 'call':
+            if code.dest.type == 'register':
+              value = propreg[code.dest.register.register_name]
+              if value != 'Uninit':
+                if value in self.external_functions:
+                  annotation = "        #### %s"% self.external_functions[value]              
+          if annotation:
+            code.annotation = annotation
+          #print hex(code.address),code
+          
+          prev = code
+            
