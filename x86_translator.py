@@ -15,9 +15,9 @@ class X86_Translator:
   def __init__(self, mode=32):
     self.registers = \
     [ ir.register("eax:32-0", "ax:16-0", "ah:16-8", "al:7-0"),
-      ir.register("ebx:32-0", "ax:16-0", "ah:16-8", "al:7-0"),
-      ir.register("ecx:32-0", "ax:16-0", "ah:16-8", "al:7-0"),
-      ir.register("edx:32-0", "ax:16-0", "ah:16-8", "al:7-0"),
+      ir.register("ebx:32-0", "bx:16-0", "bh:16-8", "bl:7-0"),
+      ir.register("ecx:32-0", "cx:16-0", "ch:16-8", "cl:7-0"),
+      ir.register("edx:32-0", "dx:16-0", "dh:16-8", "dl:7-0"),
       ir.register("esi:32-0", "si:16-0"),
       ir.register("edi:32-0", "di:16-0"),
       ir.register("ebp:32-0", "bp:16-0"),
@@ -32,6 +32,8 @@ class X86_Translator:
       ir.register("tmem:32-0"),
       ir.register("tval:32-0")]
     self.mode = 32
+    
+    
 ########### disassembler code   ####################
   def decodePrefix(self, bytes):      
     opsize   = {0x66: "opsize override"}      
@@ -105,7 +107,7 @@ class X86_Translator:
         raise InvalidInstruction("invalid opcode")
       
       node = node[nextOP]
-      
+    
     if mode not in node['instr']:
       raise InvalidInstruction("invalid opcode, missing mode")
     
@@ -115,6 +117,7 @@ class X86_Translator:
       return count, node['instr'][mode][0]
     else:
       if not node['instr'][mode][0]['modrm']:
+        return count, node['instr'][mode][0]
         print node['instr'][mode]
         print "HUUUHHH"        
       elif '+'  in node['instr'][mode][0]['modrm']:
@@ -286,6 +289,12 @@ class X86_Translator:
         value = Immediate
       elif 'mem' in oper:
         value = reg_mem
+      elif type(oper) == str:
+        for y in ['EAX','AX','AL','DX']:
+          if y in oper.upper():
+            value = self.DR(y, mode)
+            break
+        
       elif 'EAX' in oper:
         value = self.DR('EAX', mode)
       elif 'AX' in oper:
@@ -603,10 +612,10 @@ class X86_Translator:
     for seg in target.memory.segments:
       if seg.code:
         addr = target.entry_points[0]
-        #addr = 0x8048a65
+
         while addr+15 < seg.end:
           data = target.memory[addr:addr+15]
-            
+
           if len(data) < 15:
             data = data+"\x00"*15
 
@@ -615,6 +624,7 @@ class X86_Translator:
           try:
             sz, IR = self.disassemble(data, addr)
           except InvalidInstruction:
+            print 'invalid instruction', `data`
             break
           #print sz, "IRIR=",IR
           #print hex(addr), IR#, getnasm(data)
@@ -655,6 +665,7 @@ class X86_Translator:
               dest = code.ops[0].register.register_name
               eval_str = ""
               known = True
+              
               for n in code.ops[2::]:
                 if type(n) == str:
                   eval_str += n
@@ -669,24 +680,28 @@ class X86_Translator:
                     eval_str += str(val)
                 else:
                   eval_str += str(n.value)
+
               value = False
               if known:
                 value = eval(eval_str)
                 propreg[dest] = value
+              else:
+                propreg[dest] = 'Uninit'
               if value:
                 try:
                   string_pull = elf.pull_ascii(bin.memory, value)
                 except IndexError:
                   string_pull = ""
                 if len(string_pull) > 3:
-                  annotation = "@@@@@@ \"%r\""%string_pull
+                  annotation = "@@@@@@ '%r'"%string_pull
                 else:
-                  annotation = ">>>>>> "+hex(value)
+                  annotation = ">>>>>> "+hex(value & (2**self.mode -1))
           elif code.type == 'load':
             if prev:
               if len(prev.ops) > 1:
                 if prev.ops[1] == '=':
                   target = prev.ops[0]
+                  prev = None
                 else:
                   ##TODO
                   pass
@@ -702,7 +717,11 @@ class X86_Translator:
                   continue
                 dest =  code.dest.register.register_name
                 propreg[dest] = value
-                annotation = ">>>>>> "+hex(value)
+                annotation = "load >>>>>> "+hex(value & (2**self.mode -1))
+              else:
+                propreg[code.dest.register.register_name] = 'Uninit'
+            else:
+              propreg[code.dest.register.register_name] = 'Uninit'
           elif code.type == 'call':
             if code.dest.type == 'register':
               value = propreg[code.dest.register.register_name]

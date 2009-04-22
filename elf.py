@@ -305,7 +305,7 @@ class Elf:
     self.e_shstrndx = struct.unpack(self.endianness+"HHLLLLLHHHHHH", self.data[16:52])
     
 
-  def elfdump(s):
+  def elfdump(self):
       return s.e_ident + struct.pack(self.endianness+"HHLLLLLHHHHHH",\
                                       s.e_type, s.e_machine, s.e_version, s.e_entry,\
                                       s.e_phoff, s.e_shoff, s.e_flags, s.e_ehsize,\

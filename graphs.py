@@ -54,13 +54,82 @@ def is_stack_sub(x):
       elif x.ops[3] == '-':
         value = -operand.value
       else:
-        return
+        return 0
       
       if value < 0:
         return value
   return 0
 
+def match_template(template, code):
+  a = template
+  b = code
+  if a.type == b.type:
+    if a.type == 'operation':
+      if len(a.ops) == len(b.ops):
+        for op_a,op_b in zip(a.ops,b.ops):
+          match = False
+          if op_a == 'stack':
+            if op_a == op_b.register_name:
+              match = True
+          elif op_a == op_b:
+            match = True
+          elif op_a == 'reg':
+            if op_b.type == 'register':
+              match = True
+          elif op_a.type == op_b.type and op_a.type == 'constant':
+            if op_a.value == op_b.value:
+              match = True
+          if not match:
+            return 0
+      else:
+        return 0  
+    elif a.type == 'store':
+      if a.dest == 'stack':
+        if b.dest.register_name != 'stack':
+          return 0
+    else:
+      return 0
+  else:
+    return 0
+      
+  return 1
+  
+def find_prologue(code, index):
+  
+  #print code[:index+1]
+  prologues = [
+    [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)), ir.store('reg'),
+     ir.operation('reg', '=', 'stack')]
+  ]
 
+  #move backwards until a prologue or
+  # a nop or 
+  # an epilogue is found
+  
+  for p in prologues:
+    go = 0
+    sz = len(p)
+    j = index-sz
+    while j >= 0:
+      #print j, code[j:j+sz]
+      good = True
+      for k in range(sz):
+        if code[j+k].type == 'operation':
+          if 'NOP' in code[j+k].ops:
+            return j+1
+        
+        if not match_template(p[k], code[j+k]):
+          good = False
+          break
+        
+      if good:
+        return j+1
+        
+      j -= 1
+
+  return index    
+    
+  
 def linear_sweep_split_functions(code):
   if len(code) == 0: return
 
@@ -69,22 +138,37 @@ def linear_sweep_split_functions(code):
 
   current_function = []
   current_start = code[0].address
+  
+  index = 0
   for x in code:
     prev = func_start_addr
-
     if x.type == "operation":
       if is_stack_sub(x) < -4:
-        func_start_addr = x.address
+        #try to find a prologue above
+        new_index = find_prologue(code, index)
+        xaddr = code[new_index].address
+        #print hex(xaddr), code[new_index-1:index]
+        #put prologue in Queue
+        Q = code[new_index-1:index]
+        
+        func_start_addr = xaddr
     
     if prev != func_start_addr:
-      functions[current_start] = current_function
-      current_function = [x]
+      #Q holds prologue, subtract it from the current function
+      #and add it to the new one
+      functions[current_start] = current_function[:-len(Q)]
+      current_function = Q+[x]
       current_start = func_start_addr
+      Q = []
     else:
+      #print "append", hex(x.address)
       current_function.append(x)
+
+    index += 1
 
   if current_function:
     functions[current_start] = current_function
+
   return functions
 
 def dump_code(func):
@@ -185,7 +269,7 @@ def graph_function(code):
       o += "    block_0x%x -> block_0x%x;\n"%(b.start, b.branch)
   o += "}\n"
   open("graphs/%x.dot"%code[0].address,'w').write(o)
-  return 
+  return
   
   for b in blocks:
     print "********", hex(b.start), '-', hex(b.end), "********"
