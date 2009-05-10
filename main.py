@@ -5,7 +5,7 @@ import graphs
 try:
   from macholib.MachO import MachO
   import macholib
-except:
+except ImportError:
   macholib = None
   
 class Binparser:
@@ -69,7 +69,8 @@ class Binparser:
                cmd[1].initprot)
           if seg.prot & EXEC:
             seg.code = 1
-        self.memory.add( seg )
+            
+          self.memory.add( seg )
         
       self.binformat = macho_header
       self.binformat.name = "macho"      
@@ -87,7 +88,6 @@ class Binparser:
           regs = struct.unpack("<LLLLLLLLLLLLLLLLLL",cmd[2])
           flavor, count = regs[:2]
           regs = regs[2:]
-
           eip = regs[10]
       del struct
       return [eip]

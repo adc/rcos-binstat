@@ -3,6 +3,11 @@ Lieutenant Dan:   I'm here to try out my sea legs.
 Forrest Gump:     But you ain't got no legs, Lieutenant Dan
 
 This module contains IR abstractions for anything IR. 
+
+
+TODO
+  clean up register aliasing
+  
 """ 
 
 ##########memory abstractions
@@ -80,6 +85,9 @@ class alias_name:
 
   def __repr__(self):
     return self.names[0]
+
+  def __str__(self):
+    return self.__repr__()
 
 class register:
   def __init__(self, *names, **var):
@@ -183,17 +191,15 @@ class constant_operand(operand):
     self.size = size
     self.signed = signed
     #todo: exceptions on overflows?
-    #make sure it fits inside of 'size' bytes
+    
+    #this is all to deal w/ pythons number representation vs registers
+    #1) truncate to make sure it fits in 'size' bytes
+    value = value & ((256**size)-1)
+
     if signed:
-      #truncate values to fit size bytes and make sure
-      #they are negative if sign bit set
-      if value < 0:
-        value = -(value & (256**size)/2)
-      elif value > ((256**size)-1)/2:
-        value = (value % 256**size) - 256**size
-    else:
-      #truncate values to fit size bytes
-      value = value & ((256**size)-1)    
+      #2) check for > max positive value
+      if value >= (256**size)/2:
+        value = -(256**size - value)
     self.value = value
 
   def __repr__(self):

@@ -144,6 +144,7 @@ class MIPS_Translator:
           [ir.operation(DR(rd),'=',DR(rs), "-", DR(rt), signed=0)]),      
       52  : "teq",
       56  : "dssl",
+      58  : "todo",
       59  : "dsra",
       60  : "dsll32",
       62  : "dsrl32",
@@ -319,7 +320,6 @@ class MIPS_Translator:
         branchQ  = []
         
         while addr < seg.end:
-          #print hex(addr)
           try:
             IR = self.disassemble(target.memory[addr:addr+4], addr)
           except KeyError, e:
@@ -453,7 +453,7 @@ class MIPS_Translator:
                     
               #propreg[z.dest.register_name] = 
             if z.dest.register_name == "$t9":
-              if prev.address == z.address:
+              if prev and prev.address == z.address:
                 addr = (GP+prev.ops[2].value)&0xffffffff
                 if addr in self.external_functions:
                   z.annotation= '### ' + self.external_functions[addr]

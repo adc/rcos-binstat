@@ -3,8 +3,9 @@ import ir
 class CodeBlock:
   def __init__(self, code):
     self.code = code
-    self.start = code[0].address & 0xffffffff
-    self.end = code[-1].address & 0xffffffff
+    if len(code):
+      self.start = code[0].address & 0xffffffff
+      self.end = code[-1].address & 0xffffffff
 
     self.next = 0
     self.branch = 0
@@ -33,7 +34,9 @@ class CodeBlock:
     self.end = top[-1].address
     #print "old=%x-%x:%d     new=%x-%x:%"%(self.start,self.end, len(self.code), bottom[0].address, bottom[-1].address, len(bottom))
     
-    return CodeBlock(bottom)
+    if len(bottom):
+      return CodeBlock(bottom)
+    return None
 
 def CBcmp(a,b):
   return int(a.start - b.start) 
@@ -45,7 +48,7 @@ def is_stack_sub(x):
     operand = x.ops[4]
     if dest_op.register_name == "stack":        
       if operand.type != "constant":
-        return
+        return 0
       
       value = 0
             
@@ -60,22 +63,44 @@ def is_stack_sub(x):
         return value
   return 0
 
+def is_stack_align(x):
+  if len(x.ops) == 5:
+    dest_op = x.ops[0]
+    operand = x.ops[4]
+    if dest_op.register_name == "stack":        
+      if operand.type != "constant":
+        return
+            
+      if x.ops[3] == '&':
+        return 1
+  return 0
+
 def match_template(template, code):
   a = template
   b = code
   if a.type == b.type:
+    if type(b) == str: 
+        return 0
     if a.type == 'operation':
       if len(a.ops) == len(b.ops):
         for op_a,op_b in zip(a.ops,b.ops):
           match = False
           if op_a == 'stack':
-            if op_a == op_b.register_name:
+            if op_b.type == 'register':
+              if op_a == op_b.register_name:
+                match = True
+          elif type(op_b) == str:
+            if op_a == op_b:
               match = True
-          elif op_a == op_b:
+          elif type(op_a) == str:
+            pass
+          elif op_a.type == op_b.type and op_a == op_b:
             match = True
           elif op_a == 'reg':
             if op_b.type == 'register':
               match = True
+          elif type(op_a) == str:
+            pass
           elif op_a.type == op_b.type and op_a.type == 'constant':
             if op_a.value == op_b.value:
               match = True
@@ -99,13 +124,14 @@ def find_prologue(code, index):
   #print code[:index+1]
   prologues = [
     [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)), ir.store('reg'),
-     ir.operation('reg', '=', 'stack')]
+     ir.operation('reg', '=', 'stack')],
+    [ir.operation('ecx', '=', 'tmem')] #lea   4(%esp), %ecx   ;; gcc 4 main weirdness.
   ]
 
   #move backwards until a prologue or
   # a nop or 
   # an epilogue is found
-  
+    
   for p in prologues:
     go = 0
     sz = len(p)
@@ -123,7 +149,7 @@ def find_prologue(code, index):
           break
         
       if good:
-        return j+1
+        return j
         
       j -= 1
 
@@ -142,21 +168,24 @@ def linear_sweep_split_functions(code):
   index = 0
   for x in code:
     prev = func_start_addr
+    #print hex(x.address)
     if x.type == "operation":
-      if is_stack_sub(x) < -4:
+      if is_stack_sub(x) < -4 or is_stack_align(x):
         #try to find a prologue above
         new_index = find_prologue(code, index)
+        print new_index, index
         xaddr = code[new_index].address
-        #print hex(xaddr), code[new_index-1:index]
-        #put prologue in Queue
-        Q = code[new_index-1:index]
-        
+        Q = code[new_index:index]
         func_start_addr = xaddr
+    
     
     if prev != func_start_addr:
       #Q holds prologue, subtract it from the current function
       #and add it to the new one
-      functions[current_start] = current_function[:-len(Q)]
+      if Q:
+        functions[current_start] = current_function[:-len(Q)]
+      else:
+        functions[current_start] = current_function
       current_function = Q+[x]
       current_start = func_start_addr
       Q = []
@@ -207,9 +236,10 @@ def make_blocks(code):
             
     
     if instr.type == "branch_true":
-      mask = 0xffffffff
+      mask = 2**instr.dest.size - 1
       if instr.dest.signed:
-        mask = 0x7fffffff
+        mask = (2**instr.dest.size)/2 - 1
+
       dest = instr.dest.value + instr.address
       dest = dest & mask
       for i in range(0, len(blocks)):
@@ -237,9 +267,9 @@ def make_blocks(code):
     instr = blocks[i].code[-1]
     dest = 0
     if instr.type == "branch_true":
-      mask = 0xffffffff
+      mask = 2**instr.dest.size - 1
       if instr.dest.signed:
-        mask = 0x7fffffff
+        mask = (2**instr.dest.size)/2 - 1
       dest = instr.dest.value + instr.address
       dest = int(dest & mask)
       blocks[i].branch = dest
@@ -255,30 +285,32 @@ def make_blocks(code):
 def graph_function(code):
   blocks = make_blocks(code)
 
+  if not code: return
   o = "digraph function_0x%x {\n"%(code[0].address)  
   for b in blocks:
-    c = "\n".join(["0x%x: %s"%(instr.address,repr(instr)) for instr in b.code])
-    s = "%r"%c
-    s.replace('"', "\"")
-    if s[0] == '\'':
-      s = '"' + s[1:-1] + '"'
-    o += "    block_0x%x [shape=box align=left label=%s];\n"%(b.start, s)
+    if not b.code:
+      continue
+    label = "\l".join(["0x%x: %s"%(instr.address,repr(instr)) for instr in b.code]) + "\l"
+    label = label.replace('"', "\"")
+    o += "    block_0x%x [shape=box label=\"%s\"];\n"%(b.start, label)
     if b.next:
       o += "    block_0x%x -> block_0x%x;\n"%(b.start, b.next)
     if b.branch:
       o += "    block_0x%x -> block_0x%x;\n"%(b.start, b.branch)
   o += "}\n"
-  open("graphs/%x.dot"%code[0].address,'w').write(o)
-  return
+  #open("graphs/%x.dot"%code[0].address,'w').write(o)
+  #return
   
   for b in blocks:
+    if not b.code:
+      continue
     print "********", hex(b.start), '-', hex(b.end), "********"
     print "parents: ",[hex(x) for x in b.parents]
     print "next: %x   branch: %x"%(b.next, b.branch)
     for instr in b.code:
       print hex(instr.address), instr
     print ""
-  #sweep 2, draw connections
+    #sweep 2, draw connections
   
 def make_flow_graph(code):
   if not code:
@@ -287,11 +319,12 @@ def make_flow_graph(code):
   k = f.keys()
   k.sort()
   for func in k:
-    #print "#######func 0x%x"%func
+    print "====== func %x ====="%func
     graph_function(f[func])
-    #print "#######\n\n\n"
+    print "===== \n\n\n"
+  
 
-  """
+"""
   for n in code:
     if isinstance(n, ir.jump):
       print "0x%x:    "%n.address,n

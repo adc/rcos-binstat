@@ -122,13 +122,15 @@ class X86_Translator:
         print "HUUUHHH"        
       elif '+'  in node['instr'][mode][0]['modrm']:
         return count, node['instr'][mode][0]
+      elif '/r' in node['instr'][mode][0]['modrm']:        
+        return count, node['instr'][mode][0]
       else:
         peek_modrm = ord(data[1])
         OPbits = (peek_modrm >> 3) & 7        
         for x in node['instr'][mode]:
           if ('/%d'%OPbits) in x['modrm']:
             return count, x
-
+        
         raise InvalidInstruction("unmatched OPbits in modrm")
       
     raise InvalidInstruction("No matches")
@@ -150,15 +152,17 @@ class X86_Translator:
       elif sz == 4:
         return ir.constant_operand(struct.unpack('<L',data[offset:offset+4])[0], size=sz, signed=signed)
       else:
+        print sz
         raise Exception("bad imm value")
     #####
     
     operands = []
-    TMEM_IR = [] #IR translation for CISC memory access
+    TMEM_IR = [] #IR translation for complex memory access
     
     reg_mem = None
     reg = None
     
+    sib_displ = False
     sz = 0
     if not instruction['modrm'] or '+' in instruction['modrm']:
       reg = self.DR(OP & 7, mode)
@@ -223,6 +227,7 @@ class X86_Translator:
         if base != 5:
           base_reg = self.DR(base, mode)
         else:
+          sib_displ = True
           base_reg = reg_mem #displacement value
         if index != 4:
           index_reg = self.DR(index, mode)
@@ -248,8 +253,8 @@ class X86_Translator:
       #XXXX signedness
       strings = {'ib': 1, 'iw' : 2, 'id': 4, 'iq': 8}
       length = strings[instruction['immediate']]
-      if mode == self.mode/2:
-        length /= 2
+      #if mode == self.mode/2:
+      #  length /= 2
       Immediate = get_imm(length, sz, data)
       sz += length
 
@@ -267,11 +272,17 @@ class X86_Translator:
         length = mode/8
         imm = get_imm(length, sz, data)
         mem_addr = self.DR("TVAL", mode)        
-
         TMEM_IR = [ir.operation(self.DR("TMEM",mode),'=', imm)]
-
         sz += length      
 
+    #if sib had an immediate that didnt get picked up
+    if sib_displ:
+      if not mem_addr and not code_offset and not Immediate:
+        length = self.mode/8
+        Immediate = get_imm(length, sz, data)
+        TMEM_IR[0].ops = tuple(list(TMEM_IR[0].ops) + ['+', Immediate])
+        sz += length
+        
     for oper in instruction['operands']:
       value = ""
       if 'reg/mem' in oper:
@@ -327,6 +338,7 @@ class X86_Translator:
                  14: ['', 'r14b', 'r14w', 'r14d', 'r14'],
                  15: ['', 'r15b', 'r15w', 'r15d', 'r15'],
                  }
+   #TODO: segmentation registers
    #TODO in 64-bit esi/edi/ebp/esp gain low byte access w/ REX
     if type(index) == int:
       regmodes = {16: 2, 32: 3, 64: 4}
@@ -464,7 +476,7 @@ class X86_Translator:
     elif m == "LEA":
       preload = False
       poststore = False
-      ir.operation(operands[0][1], '=', self.DR("TMEM"))
+      IR = [ir.operation(operands[0][1], '=', self.DR("TMEM"))]
     elif m == "LEAVE":
       # mov esp, ebp
       # pop ebp
@@ -501,14 +513,19 @@ class X86_Translator:
             ir.load(operands[0][1]), 
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))]
     elif m == "PUSH":
-      if operands[0][1].type == 'register' and operands[0][1].register_name != 'tval':
-        poststore = False
+      if type(operands[0][1]) == str:
+        IR = [ir.unhandled_instruction(instruction['mnemonic'])]
+      else:
+        IR = [ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"-",ir.constant_operand(4)),
+              ir.store(operands[0][1]),
+              ]
+        
+        if operands[0][1].type == 'register' and operands[0][1].register_name != 'tval':
+          poststore = False
 
-      IR = [ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"-",ir.constant_operand(4)),
-            ir.store(operands[0][1]),
-            ]
     elif m == "RET":
       #pop eip
+      preload = True
       IR = [ir.operation(self.DR('ESP')),
             ir.load(self.DR('TVAL')),
             ir.operation(self.DR('ESP'),'=',self.DR("ESP"),'-',ir.constant_operand(4)),
@@ -543,9 +560,9 @@ class X86_Translator:
         IR = [ir.operation("NOP")]
       else:
         #XXXXX TODO TMEM
-        IR = [ir.operation(self.DR("tval"),'=',operands[0][0]),
-              ir.operation(operands[0][0],'=', operands[0][1]),
-              ir.operation(operands[0][1],'=', self.DR("tval"))]
+        IR = [ir.operation(self.DR("tval"),'=',operands[0][1]),
+              ir.operation(operands[0][1],'=', operands[1][1]),
+              ir.operation(operands[1][1],'=', self.DR("tval"))]
     elif m == "XOR":
       IR = [ir.operation(operands[0][1],'=', operands[0][1],'^',operands[1][1])]
     else:
@@ -557,10 +574,14 @@ class X86_Translator:
       out = []
       if preload:
         out += TMEM_IR + [ir.load(self.DR("tval"))]
+      elif TMEM_IR:
+        out += TMEM_IR
+        
       if poststore:
-        #XXX implicit load store hack
-        if len(IR[0].ops) == 1:
-          IR = [ir.operation(self.DR('tval'),'=', *(IR[0].ops))]
+        if IR[0].type == 'operation':
+          #XXX implicit load store hack
+          if len(IR[0].ops) == 1:
+            IR = [ir.operation(self.DR('tval'),'=', *(IR[0].ops))]
         out += IR + TMEM_IR + [ir.store(self.DR("tval"))]
       else:
         out += IR
@@ -618,16 +639,15 @@ class X86_Translator:
 
           if len(data) < 15:
             data = data+"\x00"*15
-
           #print "disassemble @ %x : %r"%(addr,data)          
           #print "\n",hex(addr), [hex(ord(x)) for x in data]
           try:
             sz, IR = self.disassemble(data, addr)
           except InvalidInstruction:
-            print 'invalid instruction', `data`
+            print 'invalid instruction: %x'%addr, `data`
             break
           #print sz, "IRIR=",IR
-          #print hex(addr), IR#, getnasm(data)
+          print hex(addr), IR#, getnasm(data)
           IRS += IR
           addr += sz
           
@@ -658,11 +678,13 @@ class X86_Translator:
           propreg[name] = 'Uninit'
         prev = None
         
+        propreg['esp'] = 0
+        
         for code in block.code:
           annotation = ""
           if code.type == 'operation':
             if len(code.ops) > 1 and code.ops[1] == '=':
-              dest = code.ops[0].register.register_name
+              dest = str(code.ops[0].register_name)
               eval_str = ""
               known = True
               
@@ -719,7 +741,8 @@ class X86_Translator:
                 propreg[dest] = value
                 annotation = "load >>>>>> "+hex(value & (2**self.mode -1))
               else:
-                propreg[code.dest.register.register_name] = 'Uninit'
+                if type(code.dest) != str:
+                  propreg[code.dest.register.register_name] = 'Uninit'
             else:
               propreg[code.dest.register.register_name] = 'Uninit'
           elif code.type == 'call':
@@ -730,7 +753,6 @@ class X86_Translator:
                   annotation = "        #### %s"% self.external_functions[value]              
           if annotation:
             code.annotation = annotation
-          #print hex(code.address),code
           
           prev = code
             
