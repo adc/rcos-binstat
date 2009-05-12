@@ -97,7 +97,6 @@ def get_decode_dict():
             modes.append(i)
             break
             
-      
       if 'instr' not in prev[ops[-1]]:
         prev[ops[-1]]['instr'] = {}
         for m in modes:

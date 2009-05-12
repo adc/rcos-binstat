@@ -173,9 +173,8 @@ def linear_sweep_split_functions(code):
       if is_stack_sub(x) < -4 or is_stack_align(x):
         #try to find a prologue above
         new_index = find_prologue(code, index)
-        print new_index, index
         xaddr = code[new_index].address
-        Q = code[new_index:index]
+        Q = code[new_index-1:index]
         func_start_addr = xaddr
     
     
@@ -236,9 +235,9 @@ def make_blocks(code):
             
     
     if instr.type == "branch_true":
-      mask = 2**instr.dest.size - 1
+      mask = 256**instr.dest.size - 1
       if instr.dest.signed:
-        mask = (2**instr.dest.size)/2 - 1
+        mask = (256**instr.dest.size)/2 - 1
 
       dest = instr.dest.value + instr.address
       dest = dest & mask
@@ -267,9 +266,9 @@ def make_blocks(code):
     instr = blocks[i].code[-1]
     dest = 0
     if instr.type == "branch_true":
-      mask = 2**instr.dest.size - 1
+      mask = (256**instr.dest.size) - 1
       if instr.dest.signed:
-        mask = (2**instr.dest.size)/2 - 1
+        mask = (256**instr.dest.size)/2 - 1
       dest = instr.dest.value + instr.address
       dest = int(dest & mask)
       blocks[i].branch = dest
@@ -298,7 +297,7 @@ def graph_function(code):
     if b.branch:
       o += "    block_0x%x -> block_0x%x;\n"%(b.start, b.branch)
   o += "}\n"
-  #open("graphs/%x.dot"%code[0].address,'w').write(o)
+  open("graphs/%x.dot"%code[0].address,'w').write(o)
   #return
   
   for b in blocks:

@@ -89,8 +89,11 @@ class X86_Translator:
       if OP & 0xf8 not in X86DecodeTable:
         raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,data))
       else:
+        if not X86DecodeTable[OP&0xf8]['instr'][mode][0]['modrm']:
+          raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,data))
+
         if '+' not in X86DecodeTable[OP&0xf8]['instr'][mode][0]['modrm']:
-          raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,bytes))
+          raise InvalidInstruction("unknown opcode@: %x: %r"%(OP,data))
 
         instruction = X86DecodeTable[OP&0xf8]['instr'][mode][0]
         return 1, instruction
@@ -647,7 +650,7 @@ class X86_Translator:
             print 'invalid instruction: %x'%addr, `data`
             break
           #print sz, "IRIR=",IR
-          print hex(addr), IR#, getnasm(data)
+          #print hex(addr), IR#, getnasm(data)
           IRS += IR
           addr += sz
           

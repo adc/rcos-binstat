@@ -393,11 +393,11 @@ class MIPS_Translator:
     sg = callgraph.keys()
     sg.sort()
     for func in sg:
-      print "====== func %x ====="%func
+      #print "====== func %x ====="%func
       for block in callgraph[func]:
-        print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
-        print "parents: ",[hex(x) for x in block.parents]
-        print "branches: ",hex(block.next), hex(block.branch)
+        #print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
+        #print "parents: ",[hex(x) for x in block.parents]
+        #print "branches: ",hex(block.next), hex(block.branch)
         
         #do value propagation within a block
         prev = None
@@ -458,6 +458,6 @@ class MIPS_Translator:
                 if addr in self.external_functions:
                   z.annotation= '### ' + self.external_functions[addr]
 
-          print hex(z.address),z
-        print "---end of block---\n"
-      print "====\n\n\n"
+          #print hex(z.address),z
+        #print "---end of block---\n"
+      #print "====\n\n\n"
