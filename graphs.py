@@ -236,8 +236,9 @@ def make_blocks(code):
     
     if instr.type == "branch_true":
       mask = 256**instr.dest.size - 1
-      if instr.dest.signed:
-        mask = (256**instr.dest.size)/2 - 1
+      #TODO why was signed code in here again???
+      #if instr.dest.signed:
+      #  mask = (256**instr.dest.size)/2 - 1
 
       dest = instr.dest.value + instr.address
       dest = dest & mask
@@ -267,8 +268,9 @@ def make_blocks(code):
     dest = 0
     if instr.type == "branch_true":
       mask = (256**instr.dest.size) - 1
-      if instr.dest.signed:
-        mask = (256**instr.dest.size)/2 - 1
+      #TODO why was signed code in here again???
+      #if instr.dest.signed:
+      #  mask = (256**instr.dest.size)/2 - 1
       dest = instr.dest.value + instr.address
       dest = int(dest & mask)
       blocks[i].branch = dest
