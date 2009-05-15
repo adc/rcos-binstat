@@ -406,6 +406,10 @@ class X86_Translator:
               ]
       else:
         IR += [ir.call(operands[0][1])]
+      
+      #controversial... analyzer must know callee _should_ do this
+      #IR += [ir.operation(self.DR('esp'),'=',self.DR('esp'),'+',ir.constant_operand(4))]
+      
     elif m == "CLC":
       IR = [ir.operation(self.DR("CF"), '=', ir.constant_operand(0))]
     elif m == "CLD":
@@ -430,8 +434,7 @@ class X86_Translator:
         poststore = False
       #absolute jump vs relative jump
       if 'rel' in operands[0][0]:
-        IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1]),
-               ir.jump(self.DR("tval"))]
+        IR += [ir.jump(operands[0][1],relative=True)]
       else:
         IR += [ir.jump(operands[0][1])]
     elif 'J' == m[0]:
@@ -531,7 +534,7 @@ class X86_Translator:
       preload = True
       IR = [ir.operation(self.DR('ESP')),
             ir.load(self.DR('TVAL')),
-            ir.operation(self.DR('ESP'),'=',self.DR("ESP"),'-',ir.constant_operand(4)),
+            ir.operation(self.DR('ESP'),'=',self.DR("ESP"),'+',ir.constant_operand(4)),
             ir.ret(self.DR('TVAL'))]
     elif m == "ROL":
       #XXX TODO FIX sz here
@@ -541,9 +544,9 @@ class X86_Translator:
       sz = operands[0][1].size
       IR = [ir.operation(operands[0][1], '=', operands[0][1], '>>', operands[1][1], '|', operands[0][1],'<<', '(', ir.constant_operand(sz),'-',operands[1][1],')')]
     elif m == "SAL":
-      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '<<', ir.operation(32), '+', operands[0][1], ')','>>',operands[1][1])]
+      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '<<', ir.constant_operand(32), '+', operands[0][1], ')','>>',operands[1][1])]
     elif m == "SAR":
-      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '>>', ir.operation(32), '+', operands[0][1], ')','<<',operands[1][1])]
+      IR = [ir.operation(operands[0][1],'=', '(', self.DR("CF"), '>>', ir.constant_operand(32), '+', operands[0][1], ')','<<',operands[1][1])]
     elif m == "SHL":
       IR = [ir.operation(operands[0][1],'=', operands[0][1],'<<',operands[1][1])]
     elif m == "SHR":
@@ -578,7 +581,8 @@ class X86_Translator:
       if preload:
         out += TMEM_IR + [ir.load(self.DR("tval"))]
       elif TMEM_IR:
-        out += TMEM_IR
+        if not poststore:
+          out += TMEM_IR
         
       if poststore:
         if IR[0].type == 'operation':
@@ -620,6 +624,7 @@ class X86_Translator:
     #print sz+opsz, instruction['mnemonic'], operands,'\n-->', IR
     for y in IR:
       y.address = int("%d"%int(addr & 0xffffffff))
+      y.wordsize = self.mode/8
     return sz + opsz + len(prefixbytes), IR
 
 ########### end disassembler code   ####################
@@ -633,26 +638,33 @@ class X86_Translator:
       os.system("ndisasm -u /tmp/x.asm > /tmp/x.asm.out")
       return open("/tmp/x.asm.out",'r').readlines()[0].strip()
     
+    visited =[]
     for seg in target.memory.segments:
       if seg.code:
-        addr = target.entry_points[0]
+        for start_addr in target.entry_points:
 
-        while addr+15 < seg.end:
-          data = target.memory[addr:addr+15]
+          addr = start_addr
+          while addr+15 < seg.end:
+            if addr in visited:
+              break
+            data = target.memory[addr:addr+15]
 
-          if len(data) < 15:
-            data = data+"\x00"*15
-          #print "disassemble @ %x : %r"%(addr,data)          
-          #print "\n",hex(addr), [hex(ord(x)) for x in data]
-          try:
-            sz, IR = self.disassemble(data, addr)
-          except InvalidInstruction:
-            print 'invalid instruction: %x'%addr, `data`
-            break
-          #print sz, "IRIR=",IR
-          #print hex(addr), IR#, getnasm(data)
-          IRS += IR
-          addr += sz
+            if len(data) < 15:
+              data = data+"\x00"*15
+            #print "disassemble @ %x : %r"%(addr,data)          
+            #print "\n",hex(addr), [hex(ord(x)) for x in data]
+            try:
+              sz, IR = self.disassemble(data, addr)
+            except InvalidInstruction:
+              print 'invalid instruction: %x'%addr, `data`
+              break
+            #print sz, "IRIR=",IR
+            #print hex(addr), IR#, getnasm(data)
+            visited.append(addr)
+            
+            
+            IRS += IR
+            addr += sz
           
     return IRS
     
@@ -758,4 +770,5 @@ class X86_Translator:
             code.annotation = annotation
           
           prev = code
+
             

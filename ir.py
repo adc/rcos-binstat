@@ -175,7 +175,7 @@ class register_operand(operand):
   def __cmp__(a,b):
     if type(b) == type(a):
       if a.register == b.register:
-        return 0
+          return 0
     return 1
 
 class mem_operand(operand):
@@ -285,14 +285,18 @@ class store(instruction):
     
 ###### flow instructions and abstractions
 class jump(instruction):
-  def __init__(self, op):
+  def __init__(self, op, relative=False):
     #destination = op
     instruction.__init__(self, "jump")
+    self.relative = relative
     self.dest = op
   
   def __repr__(self):
     if isinstance(self.dest, constant_operand):
-      return "JUMP loc_%x"%self.dest.value+"     "+self.annotation
+      if self.relative:
+        return "JUMP loc_%x"%(self.dest.value+self.address)+"     "+self.annotation      
+      else:
+        return "JUMP loc_%x"%self.dest.value+"     "+self.annotation
     else:
       return "JUMP %s"%repr(self.dest)+"     "+self.annotation
       
@@ -306,8 +310,8 @@ class branch_true(instruction):
   def __repr__(self):
     if self.relative:
       mask = 0xffffffff
-      if self.dest.signed:
-        mask = 0x7fffffff
+      #if self.dest.signed:
+      #  mask = 0x7fffffff
       return "BRANCH loc_"+hex((self.dest.value+self.address) & mask)+"     "+self.annotation
     else:
       return "BRANCH loc_"+hex(self.dest.value)+"     "+self.annotation

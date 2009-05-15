@@ -1,6 +1,7 @@
 import elf
 import ir
 import graphs
+import struct
 
 try:
   from macholib.MachO import MachO
@@ -79,17 +80,39 @@ class Binparser:
   
   def find_entry_points(self):
     if self.binformat.name == "ELF":
-      return [self.binformat.e_entry]
+      entries = [self.binformat.e_entry]
+      #add .ctors and .dtors
+      
+      for shdr in self.binformat.Shdrs:
+        if shdr.strname in ['.ctors','.dtors']:
+          ptr_table = self.memory[shdr.addr:shdr.addr+shdr.size]
+          if len(ptr_table)%4:
+            print "[-] UHOH, invalid ctor/dtor (unaligned size)"
+            break
+          okay = False
+          for i in range(0, len(ptr_table), 4):
+            addr = struct.unpack(self.binformat.endianness+"L", ptr_table[i:i+4])[0]
+            if addr == 0xffffffff:
+              okay = True
+            elif addr == 0:
+              break
+            else:
+              if okay:
+                entries.append(addr)
+              else:
+                print "Invalid CTOR/DTOR table? Missing 0xffffffff"
+
+      entries.sort()
+      return entries
+      
     elif self.binformat.name == "macho":
       eip = None
-      import struct
       for cmd in self.binformat.commands:
         if type(cmd[1]) == macholib.mach_o.thread_command:
           regs = struct.unpack("<LLLLLLLLLLLLLLLLLL",cmd[2])
           flavor, count = regs[:2]
           regs = regs[2:]
           eip = regs[10]
-      del struct
       return [eip]
     else:
       return []
@@ -114,11 +137,20 @@ if __name__ == "__main__":
       if not x86.external_functions:
         print "[-] No dynamic functions, static binary?"
     else:
+      #unsupported file format
       x86.external_functions = {}
     IR_rep = x86.translate(bin)
 
     x86.libcall_transform(IR_rep, bin)
+    
+    import function_grepper
+    functions = graphs.linear_sweep_split_functions(IR_rep)
+    for func in functions:
+      function_grepper.funk(bin, x86, graphs.make_blocks(functions[func]))
+      #break
+      print "--"
+
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
 
-  graphs.make_flow_graph(IR_rep)
+  #graphs.make_flow_graph(IR_rep)

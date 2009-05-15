@@ -4,8 +4,8 @@ class CodeBlock:
   def __init__(self, code):
     self.code = code
     if len(code):
-      self.start = code[0].address & 0xffffffff
-      self.end = code[-1].address & 0xffffffff
+      self.start = int(code[0].address & 0xffffffff)
+      self.end = int(code[-1].address & 0xffffffff)
 
     self.next = 0
     self.branch = 0
@@ -31,7 +31,7 @@ class CodeBlock:
     #print "Old block becomes %x-%x"%(top[0].address, top[-1].address)
     #print "New block becomes %x-%x"%(bottom[0].address, bottom[-1].address)
     self.code = top
-    self.end = top[-1].address
+    self.end = int(top[-1].address)
     #print "old=%x-%x:%d     new=%x-%x:%"%(self.start,self.end, len(self.code), bottom[0].address, bottom[-1].address, len(bottom))
     
     if len(bottom):
@@ -234,28 +234,28 @@ def make_blocks(code):
             raise Exception("FAILED TO SPLIT @ %x"%dest)
             
     
-    if instr.type == "branch_true":
-      mask = 256**instr.dest.size - 1
+    if instr.type == "branch_true" or instr.type == "jump":
+      mask = 256**instr.wordsize - 1
       #TODO why was signed code in here again???
       #if instr.dest.signed:
       #  mask = (256**instr.dest.size)/2 - 1
 
-      dest = instr.dest.value + instr.address
-      dest = dest & mask
-      for i in range(0, len(blocks)):
-        #split the destination 
-        if blocks[i].start < dest and blocks[i].end >= dest:
-          #print "SPLITTING %x-%x @ %x"%(blocks[i].start, blocks[i].end, dest)
-          newblock = blocks[i].split(dest)
-          if newblock:
-            blocks.insert(i, newblock)
-            break            
-          else:
-            print "2",blocks[i].code, hex(blocks[i].start), hex(blocks[i].end)
-            raise Exception("FAILED TO SPLIT @ %x"%dest)
-      #split after the current block      
-      SPLITNEXT = 1
-  
+      if instr.dest.type == 'constant':
+        dest = instr.dest.value + instr.address
+        dest = dest & mask
+        for i in range(0, len(blocks)):
+          #split the destination 
+          if blocks[i].start < dest and blocks[i].end >= dest:
+            #print "SPLITTING %x-%x @ %x"%(blocks[i].start, blocks[i].end, dest)
+            newblock = blocks[i].split(dest)
+            if newblock:
+              blocks.insert(i, newblock)
+              break            
+            else:
+              print "2",blocks[i].code, hex(blocks[i].start), hex(blocks[i].end)
+              raise Exception("FAILED TO SPLIT @ %x"%dest)
+        #split after the current block      
+        SPLITNEXT = 1
   #remove empty blocks
   for x in blocks:
     if len(x.code) == 0:
@@ -263,17 +263,23 @@ def make_blocks(code):
   #sweep 2, connect all the dots
   blocks.sort(cmp=CBcmp)
   for i in range(0, len(blocks)-1):
-    blocks[i].next = blocks[i+1].start
+    if blocks[i].code[-1].type != "jump":
+      #doesn't fall through
+      blocks[i].next = blocks[i+1].start
+      
     instr = blocks[i].code[-1]
     dest = 0
-    if instr.type == "branch_true":
-      mask = (256**instr.dest.size) - 1
+    if instr.type == "branch_true" or instr.type == "jump":
+      mask = (256**instr.wordsize) - 1
       #TODO why was signed code in here again???
       #if instr.dest.signed:
       #  mask = (256**instr.dest.size)/2 - 1
-      dest = instr.dest.value + instr.address
-      dest = int(dest & mask)
-      blocks[i].branch = dest
+      if instr.dest.type == 'constant':
+        dest = instr.dest.value + instr.address
+        dest = int(dest & mask)
+        if dest < 50:
+          print instr.dest.value, mask
+        blocks[i].branch = dest
     
     if dest:
       for j in range(0, len(blocks)) :

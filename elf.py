@@ -235,7 +235,7 @@ class Shdr:
       self.entsize = entsize
 
     def dump(s):
-        return struct.pack(self.endianness+"LLLLLLLLLL",\
+        return struct.pack(s.endianness+"LLLLLLLLLL",\
                             s.name, s.type, s.flags, s.addr,\
                             s.offset, s.size, s.link, s.info,\
                             s.addralign, s.entsize)
