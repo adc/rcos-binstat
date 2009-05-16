@@ -123,7 +123,7 @@ def find_prologue(code, index):
   
   #print code[:index+1]
   prologues = [
-    [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)), ir.store('reg'),
+    [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)), ir.store('reg','reg'),
      ir.operation('reg', '=', 'stack')],
     [ir.operation('ecx', '=', 'tmem')] #lea   4(%esp), %ecx   ;; gcc 4 main weirdness.
   ]

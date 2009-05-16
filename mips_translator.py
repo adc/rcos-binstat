@@ -1,4 +1,5 @@
 # TODO: 64-bit mips instructions
+#TODO -> speed hit with the current decoding, dont build up massive dictionaries...
 import ir
 import struct
 import graphs
@@ -39,7 +40,9 @@ class MIPS_Translator:
         ir.register("$29", "$sp", "stack"),
         ir.register("$30", "$fp"),
         ir.register("$31", "$ra"), 
-        ir.register("$32", "$pc")
+        ir.register("$32", "$pc"),
+        ir.register("TMEM:32-0"),
+        ir.register("TVAL:32-0")
     ]
 
     for i in range(32):
@@ -59,7 +62,7 @@ class MIPS_Translator:
         if reg in r.aliases:
           R = r
           break
-      if not R:
+      if R is None:
         raise KeyError("DR: Unknown register: %s"%reg)
     else:
       name = "$%d"%name
@@ -213,38 +216,37 @@ class MIPS_Translator:
       27  :   "ldr",
       29  :   "JALX",
       32  :   ("lb",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=1)]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'), DR(rt),size=1)]),
       33  :   ("ll", #atmoic load words
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),      
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'), DR(rt))]),      
       34  :   "lwl",
       35  :   ("lw",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'),DR(rt))]),
       36  :   ("lbu",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=1,signed=0)]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'),DR(rt),size=1,signed=0)]),
       37  :   ("lhu",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt),size=2,signed=0)]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'),DR(rt),size=2,signed=0)]),
       38  :   "lwr", #todo
       39  :   ("lw",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),      
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'),DR(rt))]),      
       40  :   ("sb",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),size=1)]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),DR('TMEM'),size=1)]),
       41  :   ("sh",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),size=2)]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),DR('TMEM'),size=2)]),
       42  :   "swl",
       43  :   ("sw",
-              [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt))]),
+              [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt),DR('TMEM'))]),
       44  :   "sdl",
       45  :   "sdr",
       46  :   "swr",
       49  :   "lwc1",
       53  :   "ldc1",
       55  :   ("ld",
-            [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR(rt))]),
+            [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.load(DR('TMEM'),DR(rt),size=8)]),
       57  :   "swc1",
       61  :   "sdc1",
       63  :   ("sd",
-            [ir.operation(DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt))])
-      
+            [ir.operation(DR('TMEM'),'=',DR(rs),'+',ir.constant_operand(offset,size=2)), ir.store(DR(rt), DR('TMEM'),size=8)])    
     }
     
     try:
@@ -307,6 +309,7 @@ class MIPS_Translator:
     if type(ret) != str:
       for n in ret[1]:
         n.address = base_addr
+        n.wordsize = 32 #TODO
     return ret
 
   def translate(self, target):

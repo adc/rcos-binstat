@@ -395,9 +395,9 @@ class X86_Translator:
       if poststore:
         poststore = False
 
-      IR = [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",ir.constant_operand(size)),
+      IR = [ir.operation(self.DR("TVAL"),'=',self.DR("EIP"),"+",ir.constant_operand(size)),
             ir.operation(self.DR("ESP",OPmode),'=',self.DR("ESP"),'-',ir.constant_operand(4)),
-            ir.store(self.DR("tval"))]
+            ir.store(self.DR("TVAL"),self.DR("ESP",OPmode))]
       
       #absolute jump vs relative jump
       if 'rel' in operands[0][0]:
@@ -487,7 +487,7 @@ class X86_Translator:
       # mov esp, ebp
       # pop ebp
       IR = [ir.operation(self.DR("ESP"),'=',self.DR("EBP")),
-            ir.load(self.DR("EBP")), 
+            ir.load(self.DR("ESP"), self.DR("EBP")), 
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))
            ]
     elif m == "MOV":
@@ -515,15 +515,14 @@ class X86_Translator:
     elif m == "OR":
       IR = [ir.operation(operands[0][1],'=',operands[0][1],'|',operands[1][1])]
     elif m == "POP":
-      IR = [ir.operation(self.DR("ESP",OPmode)), 
-            ir.load(operands[0][1]), 
+      IR = [ir.load(self.DR("ESP",OPmode), operands[0][1]), 
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))]
     elif m == "PUSH":
       if type(operands[0][1]) == str:
         IR = [ir.unhandled_instruction(instruction['mnemonic'])]
       else:
         IR = [ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"-",ir.constant_operand(4)),
-              ir.store(operands[0][1]),
+              ir.store(operands[0][1], self.DR("ESP",OPmode)),
               ]
         
         if operands[0][1].type == 'register' and operands[0][1].register_name != 'tval':
@@ -532,9 +531,8 @@ class X86_Translator:
     elif m == "RET":
       #pop eip
       preload = True
-      IR = [ir.operation(self.DR('ESP')),
-            ir.load(self.DR('TVAL')),
-            ir.operation(self.DR('ESP'),'=',self.DR("ESP"),'+',ir.constant_operand(4)),
+      IR = [ir.load(self.DR("ESP",OPmode), self.DR('TVAL')),
+            ir.operation(self.DR('ESP',OPmode),'=',self.DR("ESP",OPmode),'+',ir.constant_operand(4)),
             ir.ret(self.DR('TVAL'))]
     elif m == "ROL":
       #XXX TODO FIX sz here
@@ -568,7 +566,7 @@ class X86_Translator:
         #XXXXX TODO TMEM
         IR = [ir.operation(self.DR("tval"),'=',operands[0][1]),
               ir.operation(operands[0][1],'=', operands[1][1]),
-              ir.operation(operands[1][1],'=', self.DR("tval"))]
+              ir.operation(operands[1][1],'=', self.DR("TVAL"))]
     elif m == "XOR":
       IR = [ir.operation(operands[0][1],'=', operands[0][1],'^',operands[1][1])]
     else:
@@ -579,7 +577,7 @@ class X86_Translator:
       
       out = []
       if preload:
-        out += TMEM_IR + [ir.load(self.DR("tval"))]
+        out += TMEM_IR + [ir.load(self.DR("TMEM"),self.DR("TVAL"))]
       elif TMEM_IR:
         if not poststore:
           out += TMEM_IR
@@ -589,7 +587,7 @@ class X86_Translator:
           #XXX implicit load store hack
           if len(IR[0].ops) == 1:
             IR = [ir.operation(self.DR('tval'),'=', *(IR[0].ops))]
-        out += IR + TMEM_IR + [ir.store(self.DR("tval"))]
+        out += IR + TMEM_IR + [ir.store(self.DR("tval"), self.DR('TMEM'))]
       else:
         out += IR
                       

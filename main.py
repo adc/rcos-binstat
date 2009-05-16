@@ -112,7 +112,8 @@ if __name__ == "__main__":
     mips.external_functions = elf.mips_resolve_external_funcs(bin)
     IR_rep = mips.translate(bin)
     
-    mips.libcall_transform(IR_rep, bin)
+    #mips.libcall_transform(IR_rep, bin)
+    
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
     x86 = X86_Translator()
@@ -128,7 +129,7 @@ if __name__ == "__main__":
       print "[-] No dynamic functions found, static binary?"
     IR_rep = x86.translate(bin)
 
-    x86.libcall_transform(IR_rep, bin)
+    #x86.libcall_transform(IR_rep, bin)
     
     #import function_grepper
     #functions = graphs.linear_sweep_split_functions(IR_rep)

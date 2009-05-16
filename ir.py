@@ -260,8 +260,8 @@ class native_instruction(instruction):
 #moves register to memory and back
 
 class load(instruction):
-  """source is implicit, it is the result of the previous operation"""
-  def __init__(self, dest_op, src_op=None, size=4, signed=1):
+  """[source_reg mem address] -> dest_reg"""
+  def __init__(self, src_op, dest_op, size=4, signed=1):
     instruction.__init__(self, "load")
     self.signed = signed
     self.size = size
@@ -269,11 +269,11 @@ class load(instruction):
     self.src = src_op
   
   def __repr__(self):
-    return "LOAD %s"%(self.dest)+"     "+self.annotation
+    return "LOAD %s <- %s"%(self.dest, self.src)+"     "+self.annotation
     
 class store(instruction):
-  """destination is implicit, it is the result of the previous operation"""
-  def __init__(self, dest_op, src_op=None, size=4, signed=1):
+  """source_reg -> [dest reg mem address]"""
+  def __init__(self, src_op, dest_op, size=4, signed=1):
     instruction.__init__(self, "store")
     self.signed = signed
     self.size = size
@@ -281,7 +281,7 @@ class store(instruction):
     self.src = src_op
 
   def __repr__(self):
-    return "STORE %s"%(self.dest)+"     "+self.annotation
+    return "STORE %s -> %s"%(self.src, self.dest)+"     "+self.annotation
 
     
 ###### flow instructions and abstractions

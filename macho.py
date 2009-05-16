@@ -81,16 +81,18 @@ def macho_resolve_external_funcs(target):
   
   symtab = None
   symbols = {}
-  dyld_stub_start = 0
+  jumptable_base = 0
   
   for cmd in target.binformat.commands:
     if type(cmd[1]) == SYMTAB_COMMAND:
       symtab = cmd
     elif type(cmd[1]) == SEGMENT_COMMAND:
       if cmd[1].segname[:8] == "__IMPORT":
-        dyld_stub_start = cmd[1].vmaddr
+        for sect in cmd[2]:
+          if sect.sectname[:12] == "__jump_table":
+            jumptable_base = sect.addr
 
-  if not symtab or dyld_stub_start == 0:
+  if not symtab or jumptable_base == 0:
     return {}
   
   symtab = symtab[1]
@@ -100,9 +102,8 @@ def macho_resolve_external_funcs(target):
   
   for i in range(symtab.symoff, symtab.symoff+symtab.nsyms*12, 12):
     sym = macho_symbol(target.data[i:i+12])
-    
     if sym.n_type == N_EXT:
-      addr = count*5 + dyld_stub_start
+      addr = count*5 + jumptable_base
       name = getascii(string_table, sym.n_strx)
 
       symbols[addr] = name
