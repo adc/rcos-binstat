@@ -38,7 +38,7 @@ class Binparser:
         self.architecture = "386"        
 
       self.binformat = kipler
-    elif "\xca\xfe\xba\xbe" == data[:4]:
+    elif data[:4] in ["\xca\xfe\xba\xbe", "\xce\xfa\xed\xfe"]:
 
       macho_object = macho.macho(self.filename)
       self.data = macho_object.read()
@@ -49,7 +49,6 @@ class Binparser:
       self.architecture = "386"
       for cmd in macho_header.commands:
         if type(cmd[1]) == macho.SEGMENT_COMMAND:
-          print "load %d-%d to %x-%x"%(cmd[1].fileoff, cmd[1].fileoff+cmd[1].filesize, cmd[1].vmaddr, cmd[1].vmaddr+cmd[1].vmsize)
           seg = ir.segment(cmd[1].vmaddr, cmd[1].vmaddr+cmd[1].vmsize, 
                self.data[cmd[1].fileoff : cmd[1].fileoff + cmd[1].filesize], 
                cmd[1].initprot)
@@ -61,7 +60,7 @@ class Binparser:
       self.binformat = macho_header
       self.binformat.name = "macho"      
     else:
-      raise Exception("- unknown binary format")
+      raise Exception("- unknown binary format"+`data[:4]`)
   
   def find_entry_points(self):
     if self.binformat.name == "ELF":
