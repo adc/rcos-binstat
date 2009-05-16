@@ -2,12 +2,8 @@ import elf
 import ir
 import graphs
 import struct
+import macho
 
-try:
-  from macholib.MachO import MachO
-  import macholib
-except ImportError:
-  macholib = None
   
 class Binparser:
   def __init__(self, filename):
@@ -20,10 +16,11 @@ class Binparser:
     self.entry_points = self.find_entry_points()
 
   def parse(self):
-    data = open(self.filename).read()
-    self.data = data
 
+    data = open(self.filename).read()
     if "ELF" in data[:4]:
+      self.data = data
+
       kipler = elf.Elf(data)
       codesegments = []
       for s in kipler.Phdrs:
@@ -41,38 +38,26 @@ class Binparser:
         self.architecture = "386"        
 
       self.binformat = kipler
-    elif "\xca\xfe\xba\xbe" in data[:4]:
-      if not macholib:
-        raise Exception("Missing MachO")
-      CPU_TYPE_X86 = 7
-      READ = 1; WRITE = 2; EXEC = 4
-      
-      self.data = open(self.filename,'rb').read()
-      fat = MachO(self.filename)
+    elif "\xca\xfe\xba\xbe" == data[:4]:
 
-      macho_header = None
-      for arch in fat.headers:
-       if arch.header.cputype == CPU_TYPE_X86:
-         macho_header = arch
-         break
-      if not macho_header:
-       raise Exception("Couldn't find x86 header")
+      macho_object = macho.macho(self.filename)
+      self.data = macho_object.read()
+
+      macho_header = macho_object.macho_header
       
       #only 386 for now
       self.architecture = "386"
       for cmd in macho_header.commands:
-        if type(cmd[1]) == macholib.mach_o.segment_command:
-          fake_start = cmd[1].fileoff
-        if fake_start == 0:
-          fake_start = cmd[1].vmaddr          
+        if type(cmd[1]) == macho.SEGMENT_COMMAND:
+          print "load %d-%d to %x-%x"%(cmd[1].fileoff, cmd[1].fileoff+cmd[1].filesize, cmd[1].vmaddr, cmd[1].vmaddr+cmd[1].vmsize)
           seg = ir.segment(cmd[1].vmaddr, cmd[1].vmaddr+cmd[1].vmsize, 
-               data[fake_start : fake_start + cmd[1].filesize], 
+               self.data[cmd[1].fileoff : cmd[1].fileoff + cmd[1].filesize], 
                cmd[1].initprot)
-          if seg.prot & EXEC:
+          if seg.prot & macho.EXEC:
             seg.code = 1
             
           self.memory.add( seg )
-        
+      
       self.binformat = macho_header
       self.binformat.name = "macho"      
     else:
@@ -108,7 +93,7 @@ class Binparser:
     elif self.binformat.name == "macho":
       eip = None
       for cmd in self.binformat.commands:
-        if type(cmd[1]) == macholib.mach_o.thread_command:
+        if type(cmd[1]) == macho.THREAD_COMMAND:
           regs = struct.unpack("<LLLLLLLLLLLLLLLLLL",cmd[2])
           flavor, count = regs[:2]
           regs = regs[2:]
@@ -134,23 +119,26 @@ if __name__ == "__main__":
     x86 = X86_Translator()
     if bin.binformat.name == "ELF":
       x86.external_functions = elf.nix_resolve_external_funcs(bin)
-      if not x86.external_functions:
-        print "[-] No dynamic functions, static binary?"
+    elif bin.binformat.name == "macho":
+      x86.external_functions = macho.macho_resolve_external_funcs(bin)
     else:
       #unsupported file format
       x86.external_functions = {}
+
+    if not x86.external_functions:
+      print "[-] No dynamic functions found, static binary?"
     IR_rep = x86.translate(bin)
 
     x86.libcall_transform(IR_rep, bin)
     
-    import function_grepper
-    functions = graphs.linear_sweep_split_functions(IR_rep)
-    for func in functions:
-      function_grepper.funk(bin, x86, graphs.make_blocks(functions[func]))
-      #break
-      print "--"
+    #import function_grepper
+    #functions = graphs.linear_sweep_split_functions(IR_rep)
+    #for func in functions:
+    #  function_grepper.funk(bin, x86, graphs.make_blocks(functions[func]))
+    #  #break
+    #  print "--"
 
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
 
-  #graphs.make_flow_graph(IR_rep)
+  graphs.make_flow_graph(IR_rep)

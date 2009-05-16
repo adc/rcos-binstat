@@ -387,11 +387,12 @@ def pull_ascii(data, offset):
   return o
 ###TODO: does mips have a jmprel or equiv? for sstrip'd binaries
 
-def mips_resolve_external_funcs(go):
+def mips_resolve_external_funcs(target):
+  #XXX this is irix specific right now
   funcs = {}
   
   addr = 0
-  for phdr in go.binformat.Phdrs:
+  for phdr in target.binformat.Phdrs:
     if phdr.type == PT_DYNAMIC:
       addr = phdr.vaddr
       break
@@ -401,7 +402,8 @@ def mips_resolve_external_funcs(go):
   symtab = None
   dthash = None
   pltgot = None
-  Edyn = Elf32Dyn(go.memory[addr:addr+8], go.binformat.endianness)
+  Edyn = Elf32Dyn(target.memory[addr:addr+8], target.binformat.endianness)
+  
   while Edyn.d_tag != DT_NULL:
     #print hex(addr),'>>>>=    ',hex(Edyn.d_tag), hex(Edyn.d_val)
     if Edyn.d_tag == DT_STRTAB:
@@ -425,11 +427,12 @@ def mips_resolve_external_funcs(go):
     elif Edyn.d_tag == 0x70000013:
       gotsym = Edyn.d_val
     addr += 8
-    Edyn = Elf32Dyn(go.memory[addr:addr+8], go.binformat.endianness)
+    Edyn = Elf32Dyn(target.memory[addr:addr+8], target.binformat.endianness)
   
-  
+  #BUGCHECK this is pulled together from comparing
+  # a bunch of different irix binaries with elfdump + elfls + objdump
   addr = symtab+16
-  Esym = Elf32Sym(go.memory[addr:addr+16], go.binformat.endianness)
+  Esym = Elf32Sym(target.memory[addr:addr+16], target.binformat.endianness)
   i = 1
   while Esym.st_name != 0:
 
@@ -437,40 +440,40 @@ def mips_resolve_external_funcs(go):
       #print "=>>>>", pull_ascii(go.memory, strtab+Esym.st_name), hex(Esym.st_size),\
       #              hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other), hex(Esym.st_shndx)
       
-      funcs[(localgotno+i-gotsym)*4+pltgot] = pull_ascii(go.memory, strtab+Esym.st_name)
+      funcs[(localgotno+i-gotsym)*4+pltgot] = pull_ascii(target.memory, strtab+Esym.st_name)
       
     i += 1
     addr += 16
-    Esym = Elf32Sym(go.memory[addr:addr+16], go.binformat.endianness)
+    Esym = Elf32Sym(target.memory[addr:addr+16], target.binformat.endianness)
   
   return funcs
   
-def nix_resolve_external_funcs(go):
+def nix_resolve_external_funcs(target):
   #linux x86 32 helper  
-  def lookup_rel(go, r, symtab, strtab):
+  def lookup_rel(target, r, symtab, strtab):
     r_type  = r.r_info & 0xff
     pos = r.r_info >> 8
     addr = r.r_offset
 
-    symbol = Elf32Sym( go.memory[symtab+pos*16 :  symtab+pos*16 + 16])
+    symbol = Elf32Sym( target.memory[symtab+pos*16 :  symtab+pos*16 + 16])
     if(symbol.st_name):
       string_ptr = symbol.st_name + strtab
       name = ""
-      byte = go.memory[string_ptr]
+      byte = target.memory[string_ptr]
 
       while byte != "\x00":
         name += byte
         string_ptr += 1
-        byte = go.memory[string_ptr]
+        byte = target.memory[string_ptr]
       return name
 
     else:
       return "!unknown"
 
   #linux x86 32 helper  
-  def getplt(go, addr):
+  def getplt(target, addr):
     funcs = {}
-    Edyn = Elf32Dyn( go.memory[addr: addr+8] ) #8 bytes of data, d_tag/d_val
+    Edyn = Elf32Dyn( target.memory[addr: addr+8] ) #8 bytes of data, d_tag/d_val
   
     pltrelsz = 0
     jmprel = None
@@ -488,25 +491,25 @@ def nix_resolve_external_funcs(go):
         strtab = Edyn.d_val       
     
       addr += 8
-      Edyn = Elf32Dyn( go.memory[addr : addr+8] )
+      Edyn = Elf32Dyn( target.memory[addr : addr+8] )
     
     # retrieve the PLT now
     addr = jmprel
     while addr < jmprel + pltrelsz:
-      rel = Elf32Rel( go.memory[addr : addr+ 8] )
-      name = lookup_rel(go, rel, symtab, strtab)
-      val = struct.unpack("<L",go.memory[rel.r_offset: rel.r_offset +4])[0]-6
+      rel = Elf32Rel( target.memory[addr : addr+ 8] )
+      name = lookup_rel(target, rel, symtab, strtab)
+      val = struct.unpack("<L",target.memory[rel.r_offset: rel.r_offset +4])[0]-6
       #print "Func plt_%s @ %x"%(name, val)
       funcs[val] = name
       addr += 8
     return funcs
 
   addr = 0
-  for p in go.binformat.Phdrs:
+  for p in target.binformat.Phdrs:
     if p.type == PT_DYNAMIC:
       addr = p.vaddr
       break
   if addr:
-    return getplt(go, addr)
+    return getplt(target, addr)
   else:
     return {}

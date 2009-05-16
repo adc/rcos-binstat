@@ -27,7 +27,7 @@ class segment:
       self.data += "\x00"*((end-start) - len(data)+1)
 
   def __contains__(self, addr):
-    if addr >= self.start+self.base and addr <= self.end+self.base:
+    if addr >= self.start+self.base and addr < self.end+self.base:
       return True
     return False
 
@@ -39,6 +39,7 @@ class segment:
   def __getslice__(self, start, stop):
     if start > self.end+self.base or start < self.start + self.base \
      or stop > self.end+self.base or stop < self.start + self.base:
+      print "%x %x"%(self.start, self.end)
       raise IndexError("memory address out of range %x-%x"%(start,stop))
     return self.data[start-self.start+self.base: stop-self.start+self.base]
 
