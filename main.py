@@ -3,7 +3,7 @@ import ir
 import graphs
 import struct
 import macho
-
+import libcalls
   
 class Binparser:
   def __init__(self, filename):
@@ -106,17 +106,17 @@ if __name__ == "__main__":
   fn = sys.argv[1]
   bin = Binparser(fn)
 
+  arch = None
   if bin.architecture == "MIPS":
     from mips_translator import MIPS_Translator
-    mips = MIPS_Translator()
+    arch = mips = MIPS_Translator()
     mips.external_functions = elf.mips_resolve_external_funcs(bin)
     IR_rep = mips.translate(bin)
     
-    mips.libcall_transform(IR_rep, bin)
     
   elif bin.architecture == "386":
     from x86_translator import X86_Translator    
-    x86 = X86_Translator()
+    arch = x86 = X86_Translator()
     if bin.binformat.name == "ELF":
       x86.external_functions = elf.nix_resolve_external_funcs(bin)
     elif bin.binformat.name == "macho":
@@ -129,8 +129,6 @@ if __name__ == "__main__":
       print "[-] No dynamic functions found, static binary?"
     IR_rep = x86.translate(bin)
 
-    x86.libcall_transform(IR_rep, bin)
-    
     #import function_grepper
     #functions = graphs.linear_sweep_split_functions(IR_rep)
     #for func in functions:
@@ -141,4 +139,5 @@ if __name__ == "__main__":
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
 
+  libcalls.libcall_transform(arch, IR_rep, bin)
   graphs.make_flow_graph(IR_rep)

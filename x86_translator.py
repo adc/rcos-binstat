@@ -22,7 +22,7 @@ class X86_Translator:
       ir.register("edi:32-0", "di:16-0"),
       ir.register("ebp:32-0", "bp:16-0"),
       ir.register("esp:32-0", "sp:16-0", "stack"),
-      ir.register("eip:32-0", "ip:16-0"),
+      ir.register("eip:32-0", "ip:16-0", "pc"),
       ir.register("eflags:32-0", "id:21", "vip:20", 
                   "vif:19", "ac:18", "vm:17",
                   "rf:16", "nt:14", "iopl:13-12", 
@@ -665,108 +665,6 @@ class X86_Translator:
             addr += sz
           
     return IRS
-    
-##############################################################
-  def libcall_transform(self, IR, bin):
-
-    callgraph = {}
-    f = graphs.linear_sweep_split_functions(IR)
-    for func in f:
-      callgraph[func] = graphs.make_blocks(f[func])
-  
-    sg = callgraph.keys()
-    sg.sort()
-    for func in sg[1:]:
-      #print "====== func %x ====="%func
-      for block in callgraph[func]:
-        #print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
-        #print "parents: ",[hex(x) for x in block.parents]
-        #print "branches: ",hex(block.next), hex(block.branch)
-        
-        #propagate registers within a block
-        #eip is known based on code address
-        propreg = {}
-        for x in self.registers:
-          name = x.register_name
-          propreg[name] = 'Uninit'
-        prev = None
-        
-        propreg['esp'] = 0
-        
-        for code in block.code:
-          annotation = ""
-          if code.type == 'operation':
-            if len(code.ops) > 1 and code.ops[1] == '=':
-              dest = str(code.ops[0].register_name)
-              eval_str = ""
-              known = True
-              
-              for n in code.ops[2::]:
-                if type(n) == str:
-                  eval_str += n
-                elif n.type == 'register':
-                  if n.register.register_name == 'eip':
-                    eval_str += str(code.address)
-                  else:
-                    val = propreg[n.register.register_name]
-                    if val == 'Uninit':
-                      known = False
-                      break
-                    eval_str += str(val)
-                else:
-                  eval_str += str(n.value)
-
-              value = False
-              if known:
-                value = eval(eval_str)
-                propreg[dest] = value
-              else:
-                propreg[dest] = 'Uninit'
-              if value:
-                try:
-                  string_pull = elf.pull_ascii(bin.memory, value)
-                except IndexError:
-                  string_pull = ""
-                if len(string_pull) > 3:
-                  annotation = "@@@@@@ '%r'"%string_pull
-                else:
-                  annotation = ">>>>>> "+hex(value & (2**self.mode -1))
-          elif code.type == 'load':
-            if prev:
-              if len(prev.ops) > 1:
-                if prev.ops[1] == '=':
-                  target = prev.ops[0]
-                  prev = None
-                else:
-                  ##TODO
-                  pass
-              else:
-                target = prev.ops[0]
-                  
-              name = target.register.register_name
-              val = propreg[name]
-              if val != 'Uninit':
-                if val in bin.memory:
-                  value = struct.unpack("<L", bin.memory[val:val+4])[0]
-                else:
-                  continue
-                dest =  code.dest.register.register_name
-                propreg[dest] = value
-                annotation = "load >>>>>> "+hex(value & (2**self.mode -1))
-              else:
-                if type(code.dest) != str:
-                  propreg[code.dest.register.register_name] = 'Uninit'
-            else:
-              propreg[code.dest.register.register_name] = 'Uninit'
-          elif code.type == 'call':
-            if code.dest.type == 'register':
-              value = propreg[code.dest.register.register_name]
-              if value != 'Uninit':
-                if value in self.external_functions:
-                  annotation = "        #### %s"% self.external_functions[value]              
-          if annotation:
-            code.annotation = annotation
-          
-          prev = code
-
             
+  def get_analysis_constant_regs(self, bin):
+    return {}
