@@ -174,7 +174,7 @@ def linear_sweep_split_functions(code):
         #try to find a prologue above
         new_index = find_prologue(code, index)
         xaddr = code[new_index].address
-        Q = code[new_index-1:index]
+        Q = code[new_index:index]
         func_start_addr = xaddr
     
     

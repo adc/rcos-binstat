@@ -437,10 +437,15 @@ def mips_resolve_external_funcs(target):
   while Esym.st_name != 0:
 
     if i >= gotsym:
-      #print "=>>>>", pull_ascii(go.memory, strtab+Esym.st_name), hex(Esym.st_size),\
-      #              hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other), hex(Esym.st_shndx)
+      entry_addr = (localgotno+i-gotsym)*4+pltgot
       
-      funcs[(localgotno+i-gotsym)*4+pltgot] = pull_ascii(target.memory, strtab+Esym.st_name)
+      value = struct.unpack(">L", target.memory[entry_addr:entry_addr+4])[0]
+      
+      #print "=>>>>", pull_ascii(target.memory, strtab+Esym.st_name), hex(Esym.st_size),\
+      #              hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other),\
+      #              hex(Esym.st_shndx), "%x %x"%(addr, value)
+      
+      funcs[value] = pull_ascii(target.memory, strtab+Esym.st_name)
       
     i += 1
     addr += 16

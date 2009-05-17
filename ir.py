@@ -7,7 +7,14 @@ This module contains IR abstractions for anything IR.
 
 TODO
   clean up register aliasing
-  
+
+  number representation issues galore:
+    endianess isnt payed attention too much in here
+      decide if this should be the role of the IR or not
+    signedness
+    sizes and truncation
+
+    
 """ 
 
 ##########memory abstractions

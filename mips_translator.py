@@ -4,6 +4,7 @@ import ir
 import struct
 import graphs
 import elf
+import symbolic
 
 class MIPS_Translator:
   def __init__(self):
@@ -36,11 +37,11 @@ class MIPS_Translator:
         ir.register("$25", "$t9"),
         ir.register("$26", "$k0"),
         ir.register("$27", "$k1"),
-        ir.register("$28", "$gp", size=8),
-        ir.register("$29", "$sp", "stack"),
-        ir.register("$30", "$fp"),
-        ir.register("$31", "$ra"), 
-        ir.register("$32", "$pc"),
+        ir.register("$gp", "$28"),
+        ir.register("stack", "$29", "$sp"),
+        ir.register("$fp", "$30"),
+        ir.register("$ra", "$31"), 
+        ir.register("$pc", "$32"),
         ir.register("TMEM:32-0"),
         ir.register("TVAL:32-0")
     ]
@@ -333,7 +334,7 @@ class MIPS_Translator:
             instrs[0].address = addr
           else:
             instrs  = IR[1]
-                    
+          
           added = 0
           #reordering the delay slot is kind of like the chicken and egg problem
           if FIXDELAY:
@@ -395,72 +396,102 @@ class MIPS_Translator:
     
     sg = callgraph.keys()
     sg.sort()
+    
+    for r in self.registers:
+      if "stack" in r.aliases:
+        stack_reg = r
+      elif "$pc" in r.aliases:
+        pc_reg = r
+      elif "$0" in r.aliases:
+        zero_reg = r 
+      elif "$gp" in r.aliases:
+        gp_reg = r
+      
+    
     for func in sg:
       #print "====== func %x ====="%func
       for block in callgraph[func]:
         #print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
         #print "parents: ",[hex(x) for x in block.parents]
         #print "branches: ",hex(block.next), hex(block.branch)
+        last_reg_write = {}
+        for r in self.registers:
+          last_reg_write[r.register_name] = None
+        #zomg single static assigment
+        track_ssa = {}
+        
+        last_reg_write[gp_reg.register_name] = gp_reg.register_name
+        track_ssa[gp_reg.register_name] = "%d" %GP
+        track_ssa[zero_reg.register_name] = "0"
+        last_reg_write[zero_reg.register_name] = zero_reg.register_name
+        last_reg_write[pc_reg.register_name] = pc_reg.register_name
         
         #do value propagation within a block
-        prev = None
-        propreg = {}
-        for r in self.registers:
-          if r.register_name == "$32":
-            propreg['$pc'] = 0
-          else:
-            propreg[r.register_name] = 0
-        
-        for z in block.code:
-          if z.type == "operation":
-            if len(z.ops) > 1:
-              if z.ops[1] != "=":
-                prev = z
-              else:
-                if len(z.ops) == 5:
-                  if z.ops[0].type == "register":
-                    if z.ops[3] == '+':
-                      if z.ops[2].type == "register" and z.ops[4].type == "constant":
-                        if propreg[str(z.ops[2].register_name)] != 0:
-                          value = propreg[str(z.ops[2].register_name)] + z.ops[4].value
-                          if value in bin.memory:
-                            data = elf.pull_ascii(bin.memory, value)
-                            if len(data) > 1:
-                              z.annotation = '%%%% "'+ data.replace('"', '\"').replace("'", "\'")+ '"'
-                            else:
-                              z.annotation = "%%%% (%x)"%value
-                          propreg[str(z.ops[0].register_name)] = value
-                
-              #check if an offset from gp is being used
-              #and see if a string can be pulled out
-              for i in range(1, len(z.ops)):
-                if z.ops[i] == '+':
-                  if z.ops[i-1].type == "register":
-                    if z.ops[i-1].register_name == "$gp":
-                      if z.ops[i+1].type == "constant":
-                        data = elf.pull_ascii(bin.memory,GP+z.ops[i+1].value)
-                        if data:
-                          z.annotation = "GP"+str(z.ops[i+1].value)+"  @@@ " + `data`
-              #print hex(z.address),z
-          elif z.type == "load":
-            if prev:
-              if prev.ops[1] == '+':
-                if prev.ops[0].type == "register" and prev.ops[2].type == "constant":
-                  if prev.ops[0].register_name == "$gp":
-                    addr = GP + prev.ops[2].value
-                    if addr in bin.memory and (addr+z.size) in bin.memory:
-                      sizemap = {1: 'B', 2: 'H', 4: 'L', 8: 'Q'}
-                      value = struct.unpack(">%s"%sizemap[z.size], bin.memory[addr:z.size+addr])[0]
-                      z.annotation = "%%%% (%x)"%value
-                      propreg[str(z.dest.register_name)] = value
-                    
-              #propreg[z.dest.register_name] = 
-            if z.dest.register_name == "$t9":
-              if prev and prev.address == z.address:
-                addr = (GP+prev.ops[2].value)&0xffffffff
-                if addr in self.external_functions:
-                  z.annotation= '### ' + self.external_functions[addr]
+        for instr in block.code:
+          track_ssa[pc_reg.register_name] = "%d"%instr.address
 
-          #print hex(z.address),z
-        #print "---end of block---\n"
-      #print "====\n\n\n"
+
+          if instr.type == 'operation':
+            #check for stack assignment operation
+            if len(instr.ops) > 2:
+              if instr.ops[1] == '=':
+                #save each last assignment
+                reg_name = instr.ops[0].register.register_name
+                ssa_name = reg_name + '_'+str(instr.address) + "_"+ str(block.code.index(instr))
+
+                if instr.ops[0].register in [zero_reg, gp_reg]:
+                  pass
+                elif instr.ops[0].register == pc_reg:
+                  print "HUH? write to pc reg???"
+                else:
+                  track_ssa[ssa_name] = symbolic.make_ssa_like(last_reg_write, track_ssa, instr.ops[2:])
+                  last_reg_write[reg_name] = ssa_name            
+                #instr.annotation = symbolic.get_ssa(last_reg_write, track_ssa, instr.ops[0])
+
+                value = symbolic.get_ssa(last_reg_write, track_ssa, instr.ops[0])                
+
+                if value.isdigit():
+                  value = int(value)
+                  if value in bin.memory:
+                    data = elf.pull_ascii(bin.memory, value)
+                    if len(data) > 1:
+                      instr.annotation = ' @@@@@  ' + `data`
+                    
+                
+          elif instr.type == 'load':
+            src_addr = symbolic.get_ssa(last_reg_write, track_ssa, instr.src)
+            if src_addr.isdigit():
+              addr = int(src_addr)
+              
+              if addr in bin.memory and addr+instr.size in bin.memory:
+                sizemap = {1: 'B', 2: 'H', 4: 'L', 8: 'Q'}
+                value = struct.unpack(">%s"%sizemap[instr.size], bin.memory[addr:instr.size+addr])[0]
+                out = "%x"%value
+                if value in bin.memory:
+                  data = elf.pull_ascii(bin.memory, value)
+                  if len(data) > 1:
+                    out = ' @@@@@' + data
+                    
+                instr.annotation = "%%%% addr_%x -> (%s)"%(addr, out)
+
+                reg_name = instr.dest.register.register_name
+                ssa_name = reg_name + '_'+str(instr.address) + "_"+ str(block.code.index(instr))
+
+                track_ssa[ssa_name] = "%d"%value
+                last_reg_write[reg_name] = ssa_name
+              else:
+                instr.annotation = "addr out of range:: "+hex(addr)
+          elif instr.type == "store":
+            dst_addr = symbolic.get_ssa(last_reg_write, track_ssa, instr.dest)
+            value = symbolic.get_ssa(last_reg_write, track_ssa, instr.src)
+            instr.annotation = "    %s -> addr_(%s)"%(value, dst_addr)
+            
+          elif instr.type == 'call':
+            src_addr = symbolic.get_ssa(last_reg_write, track_ssa, instr.dest)
+            if src_addr.isdigit():
+              addr = int(src_addr)
+              if addr in self.external_functions:
+                instr.annotation= '### ' + self.external_functions[addr] + "   %x"%addr
+              else:
+                instr.annotation = ">>> %x"%addr
+              

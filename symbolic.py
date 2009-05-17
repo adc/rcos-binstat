@@ -48,3 +48,48 @@ class Pointer(Symbol):
   def __init__(self, size, type='void'):
     Symbol.__init__(self, type, size)
     self.value = 0
+
+
+
+def get_ssa(last_reg_write, ssa_history, dest):
+  if dest.type == 'register':
+    reg_name = dest.register.register_name
+    if last_reg_write[reg_name]:
+      return ssa_history[last_reg_write[reg_name]]
+    else:
+      return reg_name
+  else:
+    return ""
+
+def make_ssa_like(last_reg_write, ssa_history, ops):
+  outstring = ""
+
+  for op in ops:
+    if type(op) is str:
+      outstring += ' %s '%op
+    elif op.type == 'constant':
+      outstring += " %d "%op.value
+    elif op.type == 'register':
+      reg_name = op.register.register_name
+      if last_reg_write[reg_name]:
+        outstring += '('+ssa_history[last_reg_write[reg_name]]+')'
+      else:
+        outstring += reg_name
+    else:
+      print "UNKNOWN OP TYPE",op, op.type, ops
+    
+  try:
+    outstring = "%d"%eval(outstring)
+  except:
+    pass
+      
+  return outstring
+
+def eval_with_reg_sub(register, string):
+  eval_str = string.replace("%s &  -16 "%register.register_name, "0")
+  eval_str = eval_str.replace(register.register_name, "0")
+
+  try:
+    return eval(eval_str)
+  except:
+    return None
