@@ -27,6 +27,7 @@ def libcall_transform(arch, IR, bin):
       #print "--- block %x -> %x:%d--"%(block.start, block.end, len(block.code))
       #print "parents: ",[hex(x) for x in block.parents]
       #print "branches: ",hex(block.next), hex(block.branch)
+      
       last_reg_write = {}
       for r in arch.registers:
         last_reg_write[r.register_name] = None
@@ -70,7 +71,9 @@ def libcall_transform(arch, IR, bin):
                   
               
         elif instr.type == 'load':
+
           src_addr = symbolic.get_ssa(last_reg_write, track_ssa, instr.src)
+
           if src_addr.isdigit():
             addr = int(src_addr)
             
@@ -84,19 +87,21 @@ def libcall_transform(arch, IR, bin):
                   out = ' @@@@@' + data
                   
               instr.annotation = "%%%% addr_%x -> (%s)"%(addr, out)
+              
 
               reg_name = instr.dest.register.register_name
               ssa_name = reg_name + '_'+str(instr.address) + "_"+ str(block.code.index(instr))
-
               track_ssa[ssa_name] = "%d"%value
               last_reg_write[reg_name] = ssa_name
+
             else:
               instr.annotation = "addr out of range:: "+hex(addr)
+
         elif instr.type == "store":
           dst_addr = symbolic.get_ssa(last_reg_write, track_ssa, instr.dest)
           value = symbolic.get_ssa(last_reg_write, track_ssa, instr.src)
           instr.annotation = "    %s -> addr_(%s)"%(value, dst_addr)
-          
+
         elif instr.type == 'call':
           src_addr = symbolic.get_ssa(last_reg_write, track_ssa, instr.dest)
           if src_addr.isdigit():
@@ -105,3 +110,5 @@ def libcall_transform(arch, IR, bin):
               instr.annotation= '### ' + arch.external_functions[addr] + "   %x"%addr
             else:
               instr.annotation = ">>> %x"%addr
+
+              

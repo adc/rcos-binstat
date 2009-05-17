@@ -6,6 +6,7 @@ import elf
 
 class MIPS_Translator:
   def __init__(self):
+
     self.registers = [
         ir.register("$0", "$zero"),
         ir.register("$1", "$at"),
@@ -100,6 +101,7 @@ class MIPS_Translator:
            ir.call(DR(rs))]),
       12  : "syscall",
       13  : "break",
+      15  : "sync",
       16  : ("mfhi", 
           [ir.operation(DR(rd),'=',DR("HILO"))]),
       17  : ("mthi",     

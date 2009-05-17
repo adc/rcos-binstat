@@ -11,6 +11,7 @@ READ = 1; WRITE = 2; EXEC = 4
 SEGMENT_COMMAND = macholib.mach_o.segment_command
 THREAD_COMMAND = macholib.mach_o.thread_command
 SYMTAB_COMMAND =macholib.mach_o.symtab_command
+DYSYMTAB_COMMAND = macholib.mach_o.dysymtab_command 
 
 N_EXT = macholib.mach_o.N_EXT
 
@@ -79,8 +80,9 @@ def getascii(string, offset):
   
 def macho_resolve_external_funcs(target):
   
+  dysymtab = None
   symtab = None
-  symbols = {}
+  functions = {}
   jumptable_base = 0
   
   for cmd in target.binformat.commands:
@@ -91,8 +93,14 @@ def macho_resolve_external_funcs(target):
         for sect in cmd[2]:
           if sect.sectname[:12] == "__jump_table":
             jumptable_base = sect.addr
+            
+            start_index = sect.reserved1
+            stub_size = sect.reserved2
+            
+    elif type(cmd[1]) == DYSYMTAB_COMMAND:
+      dysymtab = cmd[1]
 
-  if not symtab or jumptable_base == 0:
+  if not dysymtab or not symtab or jumptable_base == 0:
     return {}
   
   symtab = symtab[1]
@@ -100,16 +108,26 @@ def macho_resolve_external_funcs(target):
   string_table = target.data[symtab.stroff:symtab.stroff+symtab.strsize]
   count = 0 
   
+  symbols = []
+  
   for i in range(symtab.symoff, symtab.symoff+symtab.nsyms*12, 12):
     sym = macho_symbol(target.data[i:i+12])
-    if sym.n_type == N_EXT:
-      addr = count*5 + jumptable_base
-      name = getascii(string_table, sym.n_strx)
+    name = getascii(string_table, sym.n_strx)
+    sym.strname = name
+    symbols.append(sym)
 
-      symbols[addr] = name
-      count += 1
+  #read indirect symbol table
+  indirect_indexes = struct.unpack('<'+'L'*dysymtab.nindirectsyms, 
+      target.data[dysymtab.indirectsymoff:dysymtab.indirectsymoff+dysymtab.nindirectsyms*4])
   
-  return symbols
+  for index in indirect_indexes[start_index:]:
+    if index in [0x40000000, 0x80000000]:
+      pass
+    elif index < len(symbols):
+      addr = jumptable_base + stub_size*count
+      functions[addr] = symbols[index].strname
+    else:
+      print "[-] ERR ON:: macho indirect symbol out of range", index
+    count += 1
   
-  
-  
+  return functions

@@ -32,6 +32,7 @@ class X86_Translator:
       ir.register("tmem:32-0"),
       ir.register("tval:32-0")]
     self.mode = 32
+
     
     
 ########### disassembler code   ####################
