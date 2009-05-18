@@ -38,16 +38,15 @@ class segment:
       return True
     return False
 
-  def __getitem__(self, addr):
+  def get(self, addr):
     if addr > self.end+self.base or addr < self.start+self.base:
       raise IndexError("memory address out of range: %x"%addr)
     return self.data[addr - self.start + self.base]
 
-  def __getslice__(self, start, stop):
+  def getrange(self, start, stop):
     if start > self.end+self.base or start < self.start + self.base \
-     or stop > self.end+self.base or stop < self.start + self.base:
-      print "%x %x"%(self.start, self.end)
-      raise IndexError("memory address out of range %x-%x"%(start,stop))
+         or stop > self.end+self.base or stop < self.start + self.base:
+          raise IndexError("memory address out of range %x-%x"%(start,stop))
     return self.data[start-self.start+self.base: stop-self.start+self.base]
 
 class memory:
@@ -63,17 +62,19 @@ class memory:
         return True
     return False
 
-  def __getitem__(self, addr):
+
+  def get(self, addr):
     for x in self.segments:
       if addr in x:
-        return x[addr]
+        return x.get(addr)
+    raise IndexError("memory address out of range")
+  
+  def getrange(self, start, stop):
+    for x in self.segments:
+      if start in x and stop in x:
+        return x.getrange(start, stop)
     raise IndexError("memory address out of range")
 
-  def __getslice__(self, start, stop):
-    for x in self.segments:
-      if start in x:
-        return x[start:stop]
-    raise IndexError("memory address out of range")
 
 
 class operand:

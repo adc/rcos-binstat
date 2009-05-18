@@ -82,7 +82,6 @@ def macho_resolve_external_funcs(target):
   
   dysymtab = None
   symtab = None
-  functions = {}
   jumptable_base = 0
   
   for cmd in target.binformat.commands:
@@ -119,6 +118,8 @@ def macho_resolve_external_funcs(target):
   #read indirect symbol table
   indirect_indexes = struct.unpack('<'+'L'*dysymtab.nindirectsyms, 
       target.data[dysymtab.indirectsymoff:dysymtab.indirectsymoff+dysymtab.nindirectsyms*4])
+
+  functions = {}
   
   for index in indirect_indexes[start_index:]:
     if index in [0x40000000, 0x80000000]:

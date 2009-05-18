@@ -325,7 +325,7 @@ class MIPS_Translator:
         
         while addr < seg.end:
           try:
-            IR = self.disassemble(target.memory[addr:addr+4], addr)
+            IR = self.disassemble(target.memory.getrange(addr,addr+4), addr)
           except KeyError, e:
             print "finishing early due to invalid disassembly", e
             break
@@ -381,7 +381,7 @@ class MIPS_Translator:
       GP = 0
       for phdr in bin.binformat.Phdrs:
         if phdr.type == 0x70000000:
-          GP = struct.unpack(">L", bin.memory[phdr.vaddr+20: phdr.vaddr+24])[0]
+          GP = struct.unpack(">L", bin.memory.getrange(phdr.vaddr+20 , phdr.vaddr+24))[0]
   
       if not GP:
         print "[x] FAILED TO FIND GP"

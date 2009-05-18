@@ -79,7 +79,7 @@ def libcall_transform(arch, IR, bin):
             
             if addr in bin.memory and addr+instr.size in bin.memory:
               sizemap = {1: 'B', 2: 'H', 4: 'L', 8: 'Q'}
-              value = struct.unpack(">%s"%sizemap[instr.size], bin.memory[addr:instr.size+addr])[0]
+              value = struct.unpack(">%s"%sizemap[instr.size], bin.memory.getrange(addr, instr.size+addr))[0]
               out = "%x"%value
               if value in bin.memory:
                 data = elf.pull_ascii(bin.memory, value)

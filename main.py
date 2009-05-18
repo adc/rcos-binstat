@@ -25,6 +25,7 @@ class Binparser:
       codesegments = []
       for s in kipler.Phdrs:
         if s.type == elf.PT_LOAD:
+          print hex(s.vaddr), hex(s.vaddr+s.memsz)
           seg = ir.segment(s.vaddr, s.vaddr+s.memsz,\
                       data[s.offset:s.offset+s.filesz] + "\x00"*(s.memsz-s.filesz),\
                       s.flags, s.flags)
@@ -69,7 +70,7 @@ class Binparser:
       
       for shdr in self.binformat.Shdrs:
         if shdr.strname in ['.ctors','.dtors']:
-          ptr_table = self.memory[shdr.addr:shdr.addr+shdr.size]
+          ptr_table = self.memory.getrange(shdr.addr, shdr.addr+shdr.size)
           if len(ptr_table)%4:
             print "[-] UHOH, invalid ctor/dtor (unaligned size)"
             break
@@ -129,15 +130,13 @@ if __name__ == "__main__":
       print "[-] No dynamic functions found, static binary?"
     IR_rep = x86.translate(bin)
 
-    #import function_grepper
-    #functions = graphs.linear_sweep_split_functions(IR_rep)
-    #for func in functions:
-    #  function_grepper.funk(bin, x86, graphs.make_blocks(functions[func]))
-    #  #break
-    #  print "--"
-
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
 
   libcalls.libcall_transform(arch, IR_rep, bin)
+  
   graphs.make_flow_graph(IR_rep)
+
+
+
+

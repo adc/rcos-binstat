@@ -646,7 +646,7 @@ class X86_Translator:
           while addr+15 < seg.end:
             if addr in visited:
               break
-            data = target.memory[addr:addr+15]
+            data = target.memory.getrange(addr,addr+15)
 
             if len(data) < 15:
               data = data+"\x00"*15

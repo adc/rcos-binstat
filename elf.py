@@ -380,9 +380,12 @@ class Elf:
 
 def pull_ascii(data, offset):
   o = ""
-  while offset in data and data[offset] != "\x00":
-    if data[offset] not in string.printable: break
-    o += data[offset]
+  
+  while offset in data and data.get(offset) != "\x00":
+    val = data.get(offset)
+      
+    if val not in string.printable: break
+    o += val
     offset += 1
   return o
 ###TODO: does mips have a jmprel or equiv? for sstrip'd binaries
@@ -402,7 +405,7 @@ def mips_resolve_external_funcs(target):
   symtab = None
   dthash = None
   pltgot = None
-  Edyn = Elf32Dyn(target.memory[addr:addr+8], target.binformat.endianness)
+  Edyn = Elf32Dyn(target.memory.getrange(addr, addr+8), target.binformat.endianness)
   
   while Edyn.d_tag != DT_NULL:
     #print hex(addr),'>>>>=    ',hex(Edyn.d_tag), hex(Edyn.d_val)
@@ -427,19 +430,19 @@ def mips_resolve_external_funcs(target):
     elif Edyn.d_tag == 0x70000013:
       gotsym = Edyn.d_val
     addr += 8
-    Edyn = Elf32Dyn(target.memory[addr:addr+8], target.binformat.endianness)
+    Edyn = Elf32Dyn(target.memory.getrange(addr, addr+8), target.binformat.endianness)
   
   #BUGCHECK this is pulled together from comparing
   # a bunch of different irix binaries with elfdump + elfls + objdump
   addr = symtab+16
-  Esym = Elf32Sym(target.memory[addr:addr+16], target.binformat.endianness)
+  Esym = Elf32Sym(target.memory.getrange(addr, addr+16), target.binformat.endianness)
   i = 1
   while Esym.st_name != 0:
 
     if i >= gotsym:
       entry_addr = (localgotno+i-gotsym)*4+pltgot
       
-      value = struct.unpack(">L", target.memory[entry_addr:entry_addr+4])[0]
+      value = struct.unpack(">L", target.memory.getrange(entry_addr, entry_addr+4))[0]
       
       #print "=>>>>", pull_ascii(target.memory, strtab+Esym.st_name), hex(Esym.st_size),\
       #              hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other),\
@@ -449,7 +452,7 @@ def mips_resolve_external_funcs(target):
       
     i += 1
     addr += 16
-    Esym = Elf32Sym(target.memory[addr:addr+16], target.binformat.endianness)
+    Esym = Elf32Sym(target.memory.getrange(addr, addr+16), target.binformat.endianness)
   
   return funcs
   
@@ -459,26 +462,20 @@ def nix_resolve_external_funcs(target):
     r_type  = r.r_info & 0xff
     pos = r.r_info >> 8
     addr = r.r_offset
-
-    symbol = Elf32Sym( target.memory[symtab+pos*16 :  symtab+pos*16 + 16])
+    
+    symbol = Elf32Sym( target.memory.getrange(symtab+pos*16 ,   symtab+pos*16 + 16))
     if(symbol.st_name):
-      string_ptr = symbol.st_name + strtab
-      name = ""
-      byte = target.memory[string_ptr]
-
-      while byte != "\x00":
-        name += byte
-        string_ptr += 1
-        byte = target.memory[string_ptr]
+      string_ptr = symbol.st_name + strtab      
+      name = pull_ascii(target.memory, string_ptr)
       return name
-
     else:
       return "!unknown"
 
   #linux x86 32 helper  
   def getplt(target, addr):
     funcs = {}
-    Edyn = Elf32Dyn( target.memory[addr: addr+8] ) #8 bytes of data, d_tag/d_val
+    print hex(addr), (addr+8) in target.memory
+    Edyn = Elf32Dyn( target.memory.getrange(addr, addr+8) ) #8 bytes of data, d_tag/d_val
   
     pltrelsz = 0
     jmprel = None
@@ -496,14 +493,14 @@ def nix_resolve_external_funcs(target):
         strtab = Edyn.d_val       
     
       addr += 8
-      Edyn = Elf32Dyn( target.memory[addr : addr+8] )
+      Edyn = Elf32Dyn( target.memory.getrange(addr, addr+8) )
     
     # retrieve the PLT now
     addr = jmprel
     while addr < jmprel + pltrelsz:
-      rel = Elf32Rel( target.memory[addr : addr+ 8] )
+      rel = Elf32Rel( target.memory.getrange(addr, addr+ 8) )
       name = lookup_rel(target, rel, symtab, strtab)
-      val = struct.unpack("<L",target.memory[rel.r_offset: rel.r_offset +4])[0]-6
+      val = struct.unpack("<L",target.memory.getrange(rel.r_offset, rel.r_offset +4))[0]-6
       #print "Func plt_%s @ %x"%(name, val)
       funcs[val] = name
       addr += 8
