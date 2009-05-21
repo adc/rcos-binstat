@@ -143,13 +143,13 @@ if __name__ == "__main__":
   ssa.propagate_intra_block_values(arch, callgraph, bin)
   annotations.transform(arch, callgraph, bin)
 
-  k = callgraph.keys()
-  k.sort()
-  for func in k:
-    print "====== func %x ====="%func
-    graphs.graph_function(f[func])
-    print "===== \n\n\n"
-
-
-
+  import play
+  play.stack_explore(callgraph)
+  
+  #k = callgraph.keys()
+  #k.sort()
+  #for func in k:
+  #  print "====== func %x ====="%func
+  #  graphs.graph_function(f[func])
+  #  print "===== \n\n\n"
 

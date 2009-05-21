@@ -12,7 +12,7 @@ def resolve_ssa(ssa_track, ops, location = None):
       outstring += " %d "%op.value
     elif op.type == 'register':
       reg_name = op.register.register_name
-      
+
       value = ssa_track[reg_name].get(location)
       if value:
         outstring += '('+value+')'
@@ -47,7 +47,7 @@ class ssa_value:
     #names are in order of most recent assignment
     if location:
       for address, name in self.names:
-        if location > address:
+        if location >= address:
           return self.values[name]
 
       return ""
@@ -88,7 +88,7 @@ def propagate_intra_block_values(arch, callgraph, bin):
       
       ####do value propagation within a block
       for instr in block.code:
-        ssa_track[pc_reg.register_name].update(instr.address,0,"%d"%instr.address)
+        ssa_track[str(pc_reg.register_name)].update(instr.address,0,"%d"%instr.address)
         
         if instr.type == 'operation':
           if len(instr.ops) > 2:

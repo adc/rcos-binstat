@@ -40,7 +40,7 @@ def transform(arch, callgraph, bin):
               if str(instr.ops[0].register_name) in block.ssa_vals:
 
                 value = ssa.resolve_ssa(block.ssa_vals, instr.ops[2:])
-
+                instr.annotation = '            '+value
                 if value.isdigit():
                   value = int(value)
                   if value in bin.memory:
