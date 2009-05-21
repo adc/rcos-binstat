@@ -75,84 +75,97 @@ def is_stack_align(x):
         return 1
   return 0
 
-def match_template(template, code):
-  a = template
-  b = code
-  if a.type == b.type:
-    if type(b) == str: 
+def match_pattern_operand(a, b):
+  #print a,b
+  if type(a) is str:
+    if a != b:
+      if type(b) is str:
         return 0
-    if a.type == 'operation':
-      if len(a.ops) == len(b.ops):
-        for op_a,op_b in zip(a.ops,b.ops):
-          match = False
-          if op_a == 'stack':
-            if op_b.type == 'register':
-              if op_a == op_b.register_name:
-                match = True
-          elif type(op_b) == str:
-            if op_a == op_b:
-              match = True
-          elif type(op_a) == str:
-            pass
-          elif op_a.type == op_b.type and op_a == op_b:
-            match = True
-          elif op_a == 'reg':
-            if op_b.type == 'register':
-              match = True
-          elif type(op_a) == str:
-            pass
-          elif op_a.type == op_b.type and op_a.type == 'constant':
-            if op_a.value == op_b.value:
-              match = True
-          if not match:
-            return 0
-      else:
-        return 0  
-    elif a.type == 'store':
-      if a.dest == 'stack':
-        if b.dest.register_name != 'stack':
+      elif b.type == 'register':
+        if a != b.register_name:
           return 0
-    else:
+      else:
+          return 0
+  elif a.type == 'constant':
+    if b.type != 'constant':
+      return 0
+    if a.value != b.value:
       return 0
   else:
     return 0
+  #print "match"
+  return 1
+
+def match_template(pattern, sample):
+  if len(pattern) != len(sample):
+    return 0
+    
+  for i in range(0, len(pattern)):
+    if pattern[i].type != sample[i].type:
+      return 0
+    if pattern[i].type == 'operation':
+      if len(pattern[i].ops) != len(sample[i].ops):
+        return 0
+        
+      for a,b in zip(pattern[i].ops, sample[i].ops):
+        if not match_pattern_operand(a,b):
+          return 0
+
+    elif pattern[i].type == 'store':
+      if not match_pattern_operand(pattern[i].src,sample[i].src):
+        return 0
+      if not match_pattern_operand(pattern[i].dest,sample[i].dest):
+        return 0
       
   return 1
   
-def find_prologue(code, index):
+def find_prologue(code, index, max_dist = 10):
   
-  #print code[:index+1]
+  #only operation and store implemented right now
+  #if you need a new IR type matched implement it above
   prologues = [
-    [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)), ir.store('reg','reg'),
-     ir.operation('reg', '=', 'stack')],
-    [ir.operation('ecx', '=', 'tmem')] #lea   4(%esp), %ecx   ;; gcc 4 main weirdness.
+    #push ebp; mov ebp, esp
+    [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)),
+     ir.store('ebp','stack'),
+     ir.operation('ebp', '=', 'stack')],
+
+   #push 0; mov ebp, esp; and  ebp, -16
+   [ir.operation('stack', '=', 'stack', '-', ir.constant_operand(4)),
+    ir.store(ir.constant_operand(0),'stack'),
+    ir.operation('ebp', '=', 'stack'),
+    ir.operation('stack', '=', 'stack', '&', ir.constant_operand(-16))], 
+
+
+    #lea ecx, [4+esp]   #gcc4.x main weirdness
+    [ir.operation('tmem', '=', 'stack','+',ir.constant_operand(4)), 
+    ir.operation('ecx', '=', 'tmem')]
   ]
 
   #move backwards until a prologue or
   # a nop or 
   # an epilogue is found
-    
-  for p in prologues:
-    go = 0
-    sz = len(p)
-    j = index-sz
-    while j >= 0:
-      #print j, code[j:j+sz]
-      good = True
-      for k in range(sz):
-        if code[j+k].type == 'operation':
-          if 'NOP' in code[j+k].ops:
-            return j+1
+  #
+  # for now the backwards limit is default 4
+  
+  for pattern in prologues:
+    j = 1
+    while j <= max_dist:
+      if code[index-j].type == 'ret':
+        return index - j + 1
         
-        if not match_template(p[k], code[j+k]):
-          good = False
-          break
-        
-      if good:
-        return j
-        
-      j -= 1
+      elif code[index-j].type == 'operation':
+        if 'NOP' in code[index-j].ops:
+          return index - j + 1
+      sample = code[index-j:index-j+len(pattern)]
+      if len(sample) == len(pattern):
 
+        if match_template(pattern, code[index-j:index-j+len(pattern)]):
+          return index - j
+      
+      j += 1
+    
+  
+  #return the original otherwise
   return index    
     
   
@@ -172,10 +185,14 @@ def linear_sweep_split_functions(code):
     if x.type == "operation":
       if is_stack_sub(x) < -4 or is_stack_align(x):
         #try to find a prologue above
+        #print 'prologue @', hex(x.address)
         new_index = find_prologue(code, index)
-        xaddr = code[new_index].address
-        Q = code[new_index:index]
-        func_start_addr = xaddr
+        if new_index != index:
+          if code[new_index].address != prev:
+            xaddr = code[new_index].address
+            #print " better new prologue @ %x vs %x"%(xaddr, prev)
+            Q = code[new_index:index]
+            func_start_addr = xaddr
     
     
     if prev != func_start_addr:

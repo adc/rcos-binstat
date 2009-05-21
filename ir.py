@@ -38,6 +38,7 @@ class segment:
       return True
     return False
 
+  #TODO switch back to __getitem__ in 2.6
   def get(self, addr):
     if addr > self.end+self.base or addr < self.start+self.base:
       raise IndexError("memory address out of range: %x"%addr)

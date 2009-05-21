@@ -25,7 +25,6 @@ class Binparser:
       codesegments = []
       for s in kipler.Phdrs:
         if s.type == elf.PT_LOAD:
-          print hex(s.vaddr), hex(s.vaddr+s.memsz)
           seg = ir.segment(s.vaddr, s.vaddr+s.memsz,\
                       data[s.offset:s.offset+s.filesz] + "\x00"*(s.memsz-s.filesz),\
                       s.flags, s.flags)

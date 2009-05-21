@@ -474,7 +474,6 @@ def nix_resolve_external_funcs(target):
   #linux x86 32 helper  
   def getplt(target, addr):
     funcs = {}
-    print hex(addr), (addr+8) in target.memory
     Edyn = Elf32Dyn( target.memory.getrange(addr, addr+8) ) #8 bytes of data, d_tag/d_val
   
     pltrelsz = 0

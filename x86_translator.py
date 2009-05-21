@@ -643,10 +643,11 @@ class X86_Translator:
         for start_addr in target.entry_points:
 
           addr = start_addr
-          while addr+15 < seg.end:
+          while addr+1 < seg.end:
             if addr in visited:
               break
-            data = target.memory.getrange(addr,addr+15)
+
+            data = target.memory.getrange(addr,min(addr+15,seg.end-1))
 
             if len(data) < 15:
               data = data+"\x00"*15
