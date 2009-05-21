@@ -183,18 +183,27 @@ def linear_sweep_split_functions(code):
     prev = func_start_addr
     #print hex(x.address)
     if x.type == "operation":
-      if is_stack_sub(x) < -4 or is_stack_align(x):
+      sub_val = is_stack_sub(x)
+      if sub_val < -4:
         #try to find a prologue above
-        #print 'prologue @', hex(x.address)
         new_index = find_prologue(code, index)
         if new_index != index:
           if code[new_index].address != prev:
-            xaddr = code[new_index].address
-            #print " better new prologue @ %x vs %x"%(xaddr, prev)
             Q = code[new_index:index]
+            xaddr = code[new_index].address
             func_start_addr = xaddr
-    
-    
+        else:
+          #new function go go go
+          xaddr = code[index].address
+          func_start_addr = xaddr
+          Q = []
+      elif sub_val == -4:
+        #check if the start of a prologue
+        if find_prologue(code, index+1) == index:
+          xaddr = code[index].address
+          func_start_addr = xaddr
+          Q = []
+        
     if prev != func_start_addr:
       #Q holds prologue, subtract it from the current function
       #and add it to the new one
@@ -277,12 +286,15 @@ def make_blocks(code):
   for x in blocks:
     if len(x.code) == 0:
       blocks.remove(x)
+  
+  
   #sweep 2, connect all the dots
   blocks.sort(cmp=CBcmp)
   for i in range(0, len(blocks)-1):
     if blocks[i].code[-1].type != "jump":
-      #doesn't fall through
+      #fall-through
       blocks[i].next = blocks[i+1].start
+      blocks[i+1].parents.append(blocks[i].start)
       
     instr = blocks[i].code[-1]
     dest = 0
@@ -294,8 +306,6 @@ def make_blocks(code):
       if instr.dest.type == 'constant':
         dest = instr.dest.value + instr.address
         dest = int(dest & mask)
-        if dest < 50:
-          print instr.dest.value, mask
         blocks[i].branch = dest
     
     if dest:

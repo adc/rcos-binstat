@@ -1,9 +1,12 @@
-import elf
+import struct
+
 import ir
 import graphs
-import struct
 import macho
-import libcalls
+import elf
+
+import ssa
+import annotations
   
 class Binparser:
   def __init__(self, filename):
@@ -132,9 +135,20 @@ if __name__ == "__main__":
   else:
     print "UNKNOWN ARCHITECTURE", bin.architecture
 
-  libcalls.libcall_transform(arch, IR_rep, bin)
-  
-  graphs.make_flow_graph(IR_rep)
+  callgraph = {}
+  f = graphs.linear_sweep_split_functions(IR_rep)
+  for func in f:
+    callgraph[func] = graphs.make_blocks(f[func])
+    
+  ssa.propagate_intra_block_values(arch, callgraph, bin)
+  annotations.transform(arch, callgraph, bin)
+
+  k = callgraph.keys()
+  k.sort()
+  for func in k:
+    print "====== func %x ====="%func
+    graphs.graph_function(f[func])
+    print "===== \n\n\n"
 
 
 

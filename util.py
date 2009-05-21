@@ -1,3 +1,5 @@
+import string
+
 def pull_ascii(data, offset):
   o = ""
   

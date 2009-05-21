@@ -1,5 +1,5 @@
 import struct
-import string
+import util
 """
 TODO:
   64-bit support.
@@ -378,16 +378,6 @@ class Elf:
 
       open(filename, "wb").write( self.data )
 
-def pull_ascii(data, offset):
-  o = ""
-  
-  while offset in data and data.get(offset) != "\x00":
-    val = data.get(offset)
-      
-    if val not in string.printable: break
-    o += val
-    offset += 1
-  return o
 ###TODO: does mips have a jmprel or equiv? for sstrip'd binaries
 
 def mips_resolve_external_funcs(target):
@@ -444,11 +434,11 @@ def mips_resolve_external_funcs(target):
       
       value = struct.unpack(">L", target.memory.getrange(entry_addr, entry_addr+4))[0]
       
-      #print "=>>>>", pull_ascii(target.memory, strtab+Esym.st_name), hex(Esym.st_size),\
+      #print "=>>>>", util.pull_ascii(target.memory, strtab+Esym.st_name), hex(Esym.st_size),\
       #              hex(Esym.st_value), hex(Esym.st_info), hex(Esym.st_other),\
       #              hex(Esym.st_shndx), "%x %x"%(addr, value)
       
-      funcs[value] = pull_ascii(target.memory, strtab+Esym.st_name)
+      funcs[value] = util.pull_ascii(target.memory, strtab+Esym.st_name)
       
     i += 1
     addr += 16
@@ -466,7 +456,7 @@ def nix_resolve_external_funcs(target):
     symbol = Elf32Sym( target.memory.getrange(symtab+pos*16 ,   symtab+pos*16 + 16))
     if(symbol.st_name):
       string_ptr = symbol.st_name + strtab      
-      name = pull_ascii(target.memory, string_ptr)
+      name = util.pull_ascii(target.memory, string_ptr)
       return name
     else:
       return "!unknown"

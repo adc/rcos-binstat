@@ -32,8 +32,7 @@ class X86_Translator:
       ir.register("tmem:32-0"),
       ir.register("tval:32-0")]
     self.mode = 32
-
-    
+    self.endianness = '<'
     
 ########### disassembler code   ####################
   def decodePrefix(self, bytes):      
@@ -470,7 +469,7 @@ class X86_Translator:
       elif m == "JLE":
         IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1), '||', self.DR("SF"), '!=', self.DR("OF"))]
       elif m == "JNLE":
-        IR += [ir.operation(self.DR('ZF'),'=',ir.constant_operand(0), '&&', self.DR("SF"), '==', self.DR("OF"))]
+        IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(0), '&&', self.DR("SF"), '==', self.DR("OF"))]
       elif m == "JNZ":
         IR += [ir.operation(self.DR('ZF'),'==',ir.constant_operand(1))]
       elif m == "JZ":
@@ -624,6 +623,7 @@ class X86_Translator:
     for y in IR:
       y.address = int("%d"%int(addr & 0xffffffff))
       y.wordsize = self.mode/8
+      
     return sz + opsz + len(prefixbytes), IR
 
 ########### end disassembler code   ####################

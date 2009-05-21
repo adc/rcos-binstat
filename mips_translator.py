@@ -6,7 +6,7 @@ import elf
 
 class MIPS_Translator:
   def __init__(self):
-
+    self.endianness = '>'
     self.registers = [
         ir.register("$0", "$zero"),
         ir.register("$1", "$at"),
@@ -323,7 +323,7 @@ class MIPS_Translator:
         FIXDELAY = 0
         branchQ  = []
         
-        while addr < seg.end:
+        while addr+4 < seg.end:
           try:
             IR = self.disassemble(target.memory.getrange(addr,addr+4), addr)
           except KeyError, e:
@@ -387,8 +387,6 @@ class MIPS_Translator:
         print "[x] FAILED TO FIND GP"
         return
   
-      print "GP = ", hex(GP)
-      
       ret = {}
       
       for r in self.registers:
