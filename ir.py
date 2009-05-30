@@ -235,6 +235,9 @@ class math_operand(operand):
   def __repr__(self):
     return str(self.value)
   
+  def __cmp__(a, b):
+    return a.value != b.value
+  
 def sext16(value):
   if value & 0x8000:
     return value + 0xffff0000

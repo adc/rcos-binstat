@@ -77,7 +77,7 @@ def transform(arch, callgraph, bin):
           for src_addr in src_addrs:
             for dest_addr in dest_addrs:
               o += " %s -> %s OR\n"%(src_addr, dest_addr)
-          o = o[:-2]
+          o = o[:-3]
           instr.annotation = o
 
         elif instr.type == 'call':

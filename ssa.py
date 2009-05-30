@@ -42,7 +42,7 @@ class address_value:
   def __repr__(self):
     return 'addr_{'+str(self.address)+'}[%d-%d]'%(self.bitmin,self.bitmax)
   
-
+  
 class value_expression:
   def __init__(self, value):
     self.expression = value
@@ -89,6 +89,11 @@ class value_expression:
 
   def __str__(self):
     return '('+"".join([str(e) for e in self.expression]) + ')'
+  
+  def __cmp__(a, b):
+    if isinstance(b,value_expression):
+      return a.expression != b.expression
+    return 1
   
 
 def resolve_ssa(ssa_track, ops, location = None):
@@ -164,6 +169,10 @@ class ssa_symbol:
       self.values[ssa_name] = [value]
     else:
       if value not in self.values[ssa_name]:
+        print "APPENDING"
+        for v in self.values[ssa_name]:
+          print dir(v), v
+        print dir(value), v
         self.values[ssa_name].append(value)
   
   def get(self, location=None, bitmin=None, bitmax=None):
