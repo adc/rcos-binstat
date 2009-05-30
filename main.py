@@ -100,7 +100,9 @@ class Binparser:
           flavor, count = regs[:2]
           regs = regs[2:]
           eip = regs[10]
-      return [eip]
+      if eip:
+        return [eip]
+      return []
     else:
       return []
 
@@ -139,17 +141,18 @@ if __name__ == "__main__":
   f = graphs.linear_sweep_split_functions(IR_rep)
   for func in f:
     callgraph[func] = graphs.make_blocks(f[func])
-    
+  
   ssa.propagate_intra_block_values(arch, callgraph, bin)
   annotations.transform(arch, callgraph, bin)
 
   import play
-  play.stack_explore(callgraph)
+  #play.stack_explore(arch, bin, callgraph)
+  #play.prop_blocks(arch, bin, callgraph)
   
-  #k = callgraph.keys()
-  #k.sort()
-  #for func in k:
-  #  print "====== func %x ====="%func
-  #  graphs.graph_function(f[func])
-  #  print "===== \n\n\n"
+  k = callgraph.keys()
+  k.sort()
+  for func in k:
+    print "====== func %x ====="%func
+    graphs.graph_function(f[func])
+    print "===== \n\n\n"
 

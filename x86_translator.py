@@ -34,6 +34,9 @@ class X86_Translator:
     self.mode = 32
     self.endianness = '<'
     
+    #TODO this is compiler specific --- detect this?
+    self.call_clobber = [self.DR('eax'), self.DR('ecx'), self.DR('edx')]
+    
 ########### disassembler code   ####################
   def decodePrefix(self, bytes):      
     opsize   = {0x66: "opsize override"}      
@@ -304,7 +307,7 @@ class X86_Translator:
       elif 'mem' in oper:
         value = reg_mem
       elif type(oper) == str:
-        for y in ['EAX','AX','AL','DX']:
+        for y in ['EAX','AX','AL','DX','DL']:
           if y in oper.upper():
             value = self.DR(y, mode)
             break
@@ -515,6 +518,7 @@ class X86_Translator:
     elif m == "OR":
       IR = [ir.operation(operands[0][1],'=',operands[0][1],'|',operands[1][1])]
     elif m == "POP":
+      #TODO 0x20b6:	pushl  0xff5b(%eax) no handled correctly
       IR = [ir.load(self.DR("ESP",OPmode), operands[0][1]), 
             ir.operation(self.DR("ESP",OPmode), '=', self.DR("ESP",OPmode),"+",ir.constant_operand(4))]
     elif m == "PUSH":
@@ -641,7 +645,6 @@ class X86_Translator:
     for seg in target.memory.segments:
       if seg.code:
         for start_addr in target.entry_points:
-
           addr = start_addr
           while addr+1 < seg.end:
             if addr in visited:

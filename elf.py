@@ -490,7 +490,6 @@ def nix_resolve_external_funcs(target):
       rel = Elf32Rel( target.memory.getrange(addr, addr+ 8) )
       name = lookup_rel(target, rel, symtab, strtab)
       val = struct.unpack("<L",target.memory.getrange(rel.r_offset, rel.r_offset +4))[0]-6
-      print "Func plt_%s @ %x"%(name, val)
       funcs[val] = name
       addr += 8
     return funcs

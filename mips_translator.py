@@ -8,49 +8,53 @@ class MIPS_Translator:
   def __init__(self):
     self.endianness = '>'
     self.registers = [
-        ir.register("$0", "$zero"),
-        ir.register("$1", "$at"),
-        ir.register("$2", "$v0"),
-        ir.register("$3", "$v1"),
-        ir.register("$4", "$a0"),
-        ir.register("$5", "$a1"),
-        ir.register("$6", "$a2"),
-        ir.register("$7", "$a3"),
-        ir.register("$8", "$t0"),
-        ir.register("$9", "$t1"),
-        ir.register("$10", "$t2"),
-        ir.register("$11", "$t3"),
-        ir.register("$12", "$t4"),
-        ir.register("$13", "$t5"),
-        ir.register("$14", "$t6"),
-        ir.register("$15", "$t7"),
-        ir.register("$16", "$s0"),
-        ir.register("$17", "$s1"),
-        ir.register("$18", "$s2"),
-        ir.register("$19", "$s3"),
-        ir.register("$20", "$s4"),
-        ir.register("$21", "$s5"),
-        ir.register("$22", "$s6"),
-        ir.register("$23", "$s7"),
-        ir.register("$24", "$t8"),
-        ir.register("$25", "$t9"),
-        ir.register("$26", "$k0"),
-        ir.register("$27", "$k1"),
-        ir.register("$gp", "$28"),
-        ir.register("stack", "$29", "$sp"),
-        ir.register("$fp", "$30"),
-        ir.register("$ra", "$31"), 
-        ir.register("$pc", "$32", "pc"),
+        ir.register("$0:32-0", "$zero"),
+        ir.register("$1:32-0", "$at"),
+        ir.register("$2:32-0", "$v0"),
+        ir.register("$3:32-0", "$v1"),
+        ir.register("$4:32-0", "$a0"),
+        ir.register("$5:32-0", "$a1"),
+        ir.register("$6:32-0", "$a2"),
+        ir.register("$7:32-0", "$a3"),
+        ir.register("$8:32-0", "$t0"),
+        ir.register("$9:32-0", "$t1"),
+        ir.register("$10:32-0", "$t2"),
+        ir.register("$11:32-0", "$t3"),
+        ir.register("$12:32-0", "$t4"),
+        ir.register("$13:32-0", "$t5"),
+        ir.register("$14:32-0", "$t6"),
+        ir.register("$15:32-0", "$t7"),
+        ir.register("$16:32-0", "$s0"),
+        ir.register("$17:32-0", "$s1"),
+        ir.register("$18:32-0", "$s2"),
+        ir.register("$19:32-0", "$s3"),
+        ir.register("$20:32-0", "$s4"),
+        ir.register("$21:32-0", "$s5"),
+        ir.register("$22:32-0", "$s6"),
+        ir.register("$23:32-0", "$s7"),
+        ir.register("$24:32-0", "$t8"),
+        ir.register("$25:32-0", "$t9"),
+        ir.register("$26:32-0", "$k0"),
+        ir.register("$27:32-0", "$k1"),
+        ir.register("$gp:32-0", "$28"),
+        ir.register("stack", "$29:32-0", "$sp"),
+        ir.register("$fp:32-0", "$30"),
+        ir.register("$ra:32-0", "$31"), 
+        ir.register("$pc:32-0", "$32", "pc"),
         ir.register("TMEM:32-0"),
         ir.register("TVAL:32-0")
     ]
 
     for i in range(32):
-      self.registers.append(ir.register("$f%d"%i))
-    self.registers.append(ir.register("FP_COND"))
-    self.registers.append(ir.register("HILO",size=8))
-    self.registers.append(ir.register("FIR"))
-    self.registers.append(ir.register("FSR"))
+      self.registers.append(ir.register("$f%d:32-0"%i))
+    self.registers.append(ir.register("FP_COND:32-0"))
+    self.registers.append(ir.register("HILO:64-0"))
+    self.registers.append(ir.register("FIR:32-0"))
+    self.registers.append(ir.register("FSR:32-0"))
+    
+    self.call_clobber = []
+    for i in [2,3,4,5,6,7]:
+      self.call_clobber.append(self.decode_register(i))
     
     self.external_functions = {}
     
@@ -318,50 +322,50 @@ class MIPS_Translator:
     
     for seg in target.memory.segments:
       if seg.code:
-        addr = target.entry_points[0]
+        for addr in target.entry_points:
+      
+          FIXDELAY = 0
+          branchQ  = []
         
-        FIXDELAY = 0
-        branchQ  = []
-        
-        while addr+4 < seg.end:
-          try:
-            IR = self.disassemble(target.memory.getrange(addr,addr+4), addr)
-          except KeyError, e:
-            print "finishing early due to invalid disassembly", e
-            break
-          if type(IR) == str:
-            instrs = [ir.unhandled_instruction(IR)]
-            instrs[0].address = addr
-          else:
-            instrs  = IR[1]
-          
-          added = 0
-          #reordering the delay slot is kind of like the chicken and egg problem
-          if FIXDELAY:
-            FIXDELAY = 0
-            added = 1
-            #XXX even worse than normal code alert, flip the addresses also
-            a = instrs[0].address
-            b = branchQ[0].address
-            for n in instrs:
-              n.address = b
-            for n in branchQ:
-              n.address = a
-            output += instrs
-            output += branchQ
-
-          #MIPS requires delay slot re-ordering for branches
-          for n in instrs:
-            if n.type in ["jump","call","ret","branch_true"]:
-              #wait until next time around to add the branch
-              FIXDELAY = 1
-              branchQ = instrs
+          while addr+4 < seg.end:
+            try:
+              IR = self.disassemble(target.memory.getrange(addr,addr+4), addr)
+            except KeyError, e:
+              print "finishing early due to invalid disassembly", e
               break
+            if type(IR) == str:
+              instrs = [ir.unhandled_instruction(IR)]
+              instrs[0].address = addr
+            else:
+              instrs  = IR[1]
           
-          if not FIXDELAY and not added:
-            output += instrs
+            added = 0
+            #reordering the delay slot is kind of like the chicken and egg problem
+            if FIXDELAY:
+              FIXDELAY = 0
+              added = 1
+              #XXX even worse than normal code alert, flip the addresses also
+              a = instrs[0].address
+              b = branchQ[0].address
+              for n in instrs:
+                n.address = b
+              for n in branchQ:
+                n.address = a
+              output += instrs
+              output += branchQ
+
+            #MIPS requires delay slot re-ordering for branches
+            for n in instrs:
+              if n.type in ["jump","call","ret","branch_true"]:
+                #wait until next time around to add the branch
+                FIXDELAY = 1
+                branchQ = instrs
+                break
           
-          addr += 4
+            if not FIXDELAY and not added:
+              output += instrs
+          
+            addr += 4
 
     return output
 

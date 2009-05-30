@@ -13,7 +13,7 @@ TODO
       decide if this should be the role of the IR or not
     signedness
     sizes and truncation
-
+  
     
 """ 
 
@@ -110,7 +110,7 @@ class register:
     if 'size' in var:
       self.size = var['size']
     if 'callee_save' in var:
-      self.callee_save = 1
+      self.callee_save = var['callee_save']
     
     #find bounds
     upper = 0
@@ -129,7 +129,10 @@ class register:
           upper = top
         if bottom < lower:
           lower = bottom
-
+    if lower == 1000:
+      lower = 0
+      upper = self.size * 8
+      
     self.bitmax = upper
     self.bitmin = lower
 
@@ -169,6 +172,7 @@ class register_operand(operand):
     self.bitmin = register.aliases[name]['min']
     self.bitmax = register.aliases[name]['max']
     self.size = (self.bitmax-self.bitmin)/8
+    self.size_bits = (self.bitmax-self.bitmin)
     #pull out all registers with the same size
     reglist = register.aliases.keys()
     xlist = []
@@ -178,13 +182,15 @@ class register_operand(operand):
 
     xlist = [name] + xlist
     self.register_name = alias_name(xlist)
+    self.str_name = name
   
   def __repr__(self):
-    return repr(self.register_name)
+    return repr(self.register_name)# + '{%d:%d}'%(self.bitmin,self.bitmax)
   
   def __cmp__(a,b):
     if type(b) == type(a):
       if a.register == b.register:
+        if a.bitmin == b.bitmin and a.bitmax == b.bitmax:
           return 0
     return 1
 
@@ -214,7 +220,21 @@ class constant_operand(operand):
 
   def __repr__(self):
     return str(self.value)
-
+  
+  def __cmp__(a, b):
+    if isinstance(b, constant_operand):
+      if a.value == b.value:
+        return 0
+    return 1
+#TODO currently just strings, drop them all here
+class math_operand(operand):
+  def __init__(self, op):
+    operand.__init__(self, "math")
+    self.value = op
+  
+  def __repr__(self):
+    return str(self.value)
+  
 def sext16(value):
   if value & 0x8000:
     return value + 0xffff0000
