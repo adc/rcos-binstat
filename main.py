@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
   import play
   #play.stack_explore(arch, bin, callgraph)
-  #play.prop_blocks(arch, bin, callgraph)
+  play.prop_blocks(arch, bin, callgraph)
   
   k = callgraph.keys()
   k.sort()

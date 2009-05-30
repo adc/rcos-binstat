@@ -9,7 +9,7 @@ def libcall_transform(arch, ssa_vals, instr):
   if instr.dest.type == 'register':
     src_addrs = ssa_vals[str(instr.dest.register_name)].get(instr.address)
   else:
-    src_addrs = [instr.dest.value]
+    src_addrs = [instr.get_dest()]
   
   for src_addr in src_addrs:
     if isinstance(src_addr,int):
@@ -17,8 +17,11 @@ def libcall_transform(arch, ssa_vals, instr):
       if addr in arch.external_functions:
         instr.annotation= '### ' + arch.external_functions[addr] + "   %x"%addr
       else:
-        instr.annotation = ">>> %x"%addr
-
+        try:
+          instr.annotation = ">>> %x"%addr+'    '+str(instr.dest.value)
+        except:
+          instr.annotation = ">>> %x"%addr
+          
 def transform(arch, callgraph, bin):
   sg = callgraph.keys()
   sg.sort()
@@ -80,5 +83,5 @@ def transform(arch, callgraph, bin):
           o = o[:-3]
           instr.annotation = o
 
-        elif instr.type == 'call':
+        elif instr.type == 'call' or instr.type == 'jump':
           libcall_transform(arch, block.ssa_vals, instr)

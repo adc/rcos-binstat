@@ -172,7 +172,7 @@ class ssa_symbol:
         print "APPENDING"
         for v in self.values[ssa_name]:
           print dir(v), v
-        print dir(value), v
+        print dir(value), value
         self.values[ssa_name].append(value)
   
   def get(self, location=None, bitmin=None, bitmax=None):

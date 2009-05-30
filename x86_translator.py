@@ -436,10 +436,15 @@ class X86_Translator:
       if poststore:
         poststore = False
       #absolute jump vs relative jump
-      if 'rel' in operands[0][0]:
-        IR += [ir.jump(operands[0][1],relative=True)]
+      if isinstance(operands[0][1], ir.constant_operand):
+        DEST = ir.constant_operand(int(size + operands[0][1].value))
       else:
-        IR += [ir.jump(operands[0][1])]
+        DEST = operands[0][1]
+
+      if 'rel' in operands[0][0]:        
+        IR += [ir.jump(DEST,relative=True)]
+      else:
+        IR += [ir.jump(DEST)]
     elif 'J' == m[0]:
       #IR = [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1])]
       DEST = ir.constant_operand(int(size + operands[0][1].value))

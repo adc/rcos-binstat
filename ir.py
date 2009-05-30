@@ -206,6 +206,7 @@ class constant_operand(operand):
     operand.__init__(self, "constant")
     self.size = size
     self.signed = signed
+    
     #todo: exceptions on overflows?
     
     #this is all to deal w/ pythons number representation vs registers
@@ -216,7 +217,8 @@ class constant_operand(operand):
       #2) check for > max positive value
       if value >= (256**size)/2:
         value = -(256**size - value)
-    self.value = value
+
+    self.value = int(value)
 
   def __repr__(self):
     return str(self.value)
@@ -326,13 +328,19 @@ class jump(instruction):
   
   def __repr__(self):
     if isinstance(self.dest, constant_operand):
-      if self.relative:
-        return "JUMP loc_%x"%(self.dest.value+self.address)+"     "+self.annotation      
-      else:
-        return "JUMP loc_%x"%self.dest.value+"     "+self.annotation
+        return "JUMP loc_%x"%self.get_dest()+"     "+self.annotation      
     else:
       return "JUMP %s"%repr(self.dest)+"     "+self.annotation
-      
+  
+  def get_dest(self):
+    if isinstance(self.dest, constant_operand):
+      if self.relative:
+        return self.dest.value+self.address
+      else:
+        return self.dest.value
+    else:
+      return self.dest
+    
     
 class branch_true(instruction):
   def __init__(self, op, relative=1):
