@@ -8,282 +8,145 @@ import struct
 import util
 
 import ir
-import copy
-# build expressions made up of
-#   ir.mem_operand, ir.constant_operand, ir.math_operand,
-#     and reg_holders
 
 
-
-
-######## helpers for storing symbols
 class undefined_value:
-  def __init__(self, reg, bitmin=-1, bitmax=-1):
-    self.type = 'undefined'
-    if isinstance(reg, str):
-      self.name = reg
-      self.bitmin = bitmin
-      self.bitmax = bitmax
-    else:
-      self.name = str(reg.register_name)
-      self.bitmin = reg.bitmin
-      self.bitmax = reg.bitmax
-  
+  def __init__(self, name):
+    self.name = name
+  def __str__(self):
+    return 'undefined_'+str(self.name)
   def __repr__(self):
-    return self.name+'[%d-%d]'%(self.bitmin,self.bitmax)
+    return self.__str__()
+  def __cmp__(a,b):
+    if isinstance(b, undefined_value):
+      return self.name.__cmp__(b.name)
+    return 1
 
 class address_value:
-  def __init__(self, address, bitmin, bitmax):
-    self.type = 'address'
+  def __init__(self, addr_value, bitmin, bitmax):
+    self.value = addr_value
     self.bitmin = bitmin
     self.bitmax = bitmax
-    self.address = address #value_expression representing address
-  
-  def __repr__(self):
-    return 'addr_{'+str(self.address)+'}[%d-%d]'%(self.bitmin,self.bitmax)
-  
-  
-class value_expression:
-  def __init__(self, value):
-    self.expression = value
-    
-  def eval(self, **inputs):
-    temp = []
-    for e in self.expression:
-      if isinstance(e, undefined_value):
-        if e.name not in inputs:
-          raise NameError("unknown variable:%s"%e.name)
-        temp.append(inputs[e.name])
-      elif isinstance(e, address_value):
-        
-        try:
-          addr = e.address.eval(inputs)
-        except NameError:
-          raise NameError("Could not resolve address: %s"%e.address)
-
-        if 'addr_'+str(addr) in inputs:
-          temp.append(inputs[e.name])
-        else:        
-          raise NameError("Unknown value for address: %s"%addr)
-        
-      else:
-        temp.append(e)
-    
-    return eval(value_expression(temp).dump_string())
-    
-  def get_unknowns(self):
-    unknowns = []
-    for val in self.expression:
-      if isinstance(val, undefined_value):
-        unknowns.append(val.name)
-    return unknowns
-    
-  def simplify(self):
-    pass
-  
-  def dump_string(self):
-    return str(self)
-  
-  def __repr__(self):
-    return str(self)
-
   def __str__(self):
-    return '('+"".join([str(e) for e in self.expression]) + ')'
-  
-  def __cmp__(a, b):
-    if isinstance(b,value_expression):
-      return a.expression != b.expression
-    return 1
-  
-
-def resolve_ssa(ssa_track, ops, location = None):
-  outstring = ""
-  
-  #this explodes
-  exprs = [[]]
-
-  for op in ops:
-    if type(op) is str:
-      for expr in exprs:
-        expr.append( ir.math_operand(op) )
-    elif op.type == 'constant':
-      for expr in exprs:
-        expr.append(op)
-    elif op.type == 'register':
-
-      added_exprs = []
-      
-      for expr in exprs:
-        reg_name = op.register.register_name  
-        values = ssa_track[reg_name].get(location, op.bitmin, op.bitmax)
-        
-        if len(values) == 1:
-          expr.append( values[0] )
-        else:
-          #need to make a copy of the expression for each additional possible value
-          for i in range(1, len(values)):
-            newexpr = copy.copy(expr)
-            newexpr.append(values[i])
-            added_exprs.append(newexpr)
-            
-          expr.append( values[0] )
-
-      if added_exprs:
-        exprs += added_exprs
-          
-    else:
-      print "UNKNOWN OP TYPE",op, op.type, ops
+    return "addr_[%s]"%str(self.value)
+  def __repr__(self):
+    return self.__str__()
     
-  val = value_expression(expr)
+import copy
 
-  try:
-    return val.eval()
-  except:
-    return val
+class state:
+  def __init__(self, expression=None):
+    self.expression = []
+    if expression is not None:
+      self.expressions.append(expression)
+      
+    self.__getitem__ = self.expressions.__getitem__
+    self.__len__ = self.expressions.__len__
+  
+  def eval(self):
+    try:
+      return eval(self.__str__())
+    except:
+      return None
+      
+  def __str__(self):
+    if is instance(self.expression, list):
+      return '('+"".join(str(x) for x in self.expressions)+')\n'[:-1]
+    else:
+      return '(%s)'%str(self.express)
 
+  def __repr__(self):
+    return self.__str__()
 
-#a symbol holds lists of possible values for a target
 class ssa_symbol:
-  def __init__(self, target, size, bitmin, bitmax):
-    self.target = target
-    self.names = []
-    self.values = {}
+  def __init__(self, name, size, bitmin, bitmax):
+    self.name = name
     self.size = size
     self.bitmin = bitmin
     self.bitmax = bitmax
-
-  def update(self, addr, aux, value, bitmin=0, bitmax=-1):
-    #assumes updates happen sequentially
-    # by address
-    if bitmax == -1:
-      bitmax = self.size * 8
+    self.location = 0
+    self.aux_loc = 0
+    self.states = []
     
-    if bitmin != self.bitmin or bitmax != self.bitmax:
-      #need point out the bit value here
-      # to bitmask or to just :x ???
-      pass
+    self.parent = None
+  
+  def __str__(self):
+    return str(self.get_values())
+  
+  def comes_before(self, addr, aux_loc):
+    if addr > self.location:
+      return 1
+    elif addr == self.location:
+      if aux_loc > self.aux_loc:
+        return 1
+    return 0
+  
+  def is_same_place(self, addr, aux_loc):
+    return self.location == addr and aux_loc == self.aux_loc
+
+  def get_evals(self):
+    o = []
+    for e in self.expressions:
+      try:
+        o.append(eval(str(e)))
+      except:
+        o.append(e)
+    return o
+    
+  def get_values(self, location=None, aux_loc=None):
+    if not location:
+      return self.expressions
+    
+    if self.comes_before(location,aux_loc):
+      return self.expressions
+    
+    if self.parent:
+      return self.parent.get_values(location, aux_loc)
+    raise Exception("LOST HEAD!")
+  
+  def update(self, expr, location, aux_loc):
+    if self.comes_before(location,aux_loc):
+      #print "new update", self.name, expr, location, aux_loc, 'vs', self.location, self.aux_loc
+      #update is newer than current symbol
+      #push current data back
       
-    ssa_name = self.target + '_'+str(addr) + "_"+ str(aux)    
-    self.names = [(addr, ssa_name)] + self.names
-    if ssa_name not in self.values:
-      self.values[ssa_name] = [value]
+      #copy to old obj
+      old = ssa_symbol(self.name, self.size, self.bitmin, self.bitmax)
+      old.location = self.location
+      old.aux_loc = self.aux_loc
+      old.expressions = self.expressions
+      old.parent = self.parent      
+      
+      #make new data
+      self.expressions = ssa_expression(expr)
+      self.location = location
+      self.aux_loc = aux_loc
+      self.parent = old
+    elif self.is_same_place(location, aux_loc):
+      #print "pushing another value at the same location"
+      self.expressions.push(expr)
     else:
-      if value not in self.values[ssa_name]:
-        print "APPENDING"
-        for v in self.values[ssa_name]:
-          print dir(v), v
-        print dir(value), value
-        self.values[ssa_name].append(value)
-  
-  def get(self, location=None, bitmin=None, bitmax=None):
-    #find first valid address
-    #names are in order of most recent assignment
-    if bitmin is None:
-      bitmin = self.bitmin
-    if bitmax is None:
-      bitmax = self.bitmax
-    
-    if location:
-      for address, name in self.names:
-        if location >= address:
-          return self.values[name]
-      
-      return [undefined_value(self.target, bitmin, bitmax)]
-    
-    #otherwise return the most recent name
-    if len(self.names) == 0:
-      return [undefined_value(self.target, bitmin, bitmax)]
-    else:
-      return self.values[ self.names[0][1] ]
-
-
-
-
-
-
-
-
-
-
-
-###### code that actually operates on the IR
-def propagate_intra_block_values(arch, callgraph, bin):
-  
-  sg = callgraph.keys()
-  sg.sort()
-  
-  constant_regs = arch.get_analysis_constant_regs(bin)
-  
-  for r in arch.registers:
-    if "stack" in r.aliases:
-      stack_reg = r
-    elif "pc" in r.aliases:
-      pc_reg = r
-  
-  
-  for func in sg:
-    for block in callgraph[func]:
-      ssa_track = {}
-      for r in arch.registers:
-        ssa_track[str(r.register_name)] = ssa_symbol(str(r.register_name),
-                                                    r.size, r.bitmin, r.bitmax)
-      for reg in constant_regs:
-        ssa_track[str(reg.register_name)].update(0,0,constant_regs[reg])
-      
-      for instr in block.code:
-        addr_value = ir.constant_operand(instr.address, pc_reg.size)
-        ssa_track[str(pc_reg.register_name)].update(instr.address,0, addr_value)
+      #print "retroactive update"
+      #update is retroactive
+      #pass data long to parent..
+      if self.parent:
+        self.parent.update(expr, location, aux_loc)
+      else:
+        #create it as a parent
+        parent = ssa_symbol(self.name, self.size, self.bitmin, self.bitmax)
+        parent.location = location
+        parent.aux_loc = aux_loc
+        parent.expressions = expr
         
-        if instr.type == 'operation':
-          if len(instr.ops) > 2:
-            if instr.ops[1] == '=':
-              #update on assignment
-              if instr.ops[0].register in constant_regs:
-                pass
-              elif instr.ops[0].register == pc_reg:
-                print "HUH? write to pc reg???"
-              else:
-                reg_op = instr.ops[0]
-                reg_name = reg_op.register.register_name
-                value = resolve_ssa(ssa_track, instr.ops[2:])
-                
-                
-                ssa_track[reg_name].update(instr.address, block.code.index(instr), 
-                                           value,
-                                           reg_op.bitmin, reg_op.bitmax)
-                  
 
-        elif instr.type == 'load':
-          #update on load
-          for src_addr in ssa_track[str(instr.src.register_name)].get():
-            value = address_value(src_addr, 0, instr.src.size*8)
-          
-            if isinstance(src_addr, int):
-              addr = src_addr
-              if addr in bin.memory and addr+instr.size in bin.memory:
-                sizemap = {1: 'B', 2: 'H', 4: 'L', 8: 'Q'}
-                value = struct.unpack(arch.endianness+"%s"%sizemap[instr.size], bin.memory.getrange(addr, instr.size+addr))[0]
-                value = value_expression([value])
-          
-            reg_op = instr.dest
-            if isinstance(reg_op, ir.register_operand):
-              reg_name = str(reg_op.register.register_name)
-              ssa_track[reg_name].update(instr.address,block.code.index(instr), 
-                                         value,
-                                         reg_op.bitmin, reg_op.bitmax)
-              
-        elif instr.type == "store":
-          #memory destination...
-          pass
-        elif instr.type == "call":
-          #invalidate registers based on calling conventions.
-          for x in arch.call_clobber:
-            reg_name = str(x.register_name)
-            ssa_track[reg_name].update(instr.address,block.code.index(instr),
-                                      undefined_value(x))
+def resolve_ssa(symbols, ops, location=None):
+  result = ssa_expression()
+  for op in ops:
+    if isinstance(op, ir.register_operand):
+      reg_name = str(op.register.register_name)
+      result.push(symbols[reg_name])
+    else:
+      result.push(op)
+  return ssa_expression(result)
 
-      block.ssa_vals = ssa_track
-
-
-
-      
+    

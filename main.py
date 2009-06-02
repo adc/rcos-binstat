@@ -143,11 +143,13 @@ if __name__ == "__main__":
     callgraph[func] = graphs.make_blocks(f[func])
   
   ssa.propagate_intra_block_values(arch, callgraph, bin)
+
+  #import play
+  #play.stack_explore(arch, bin, callgraph)
+  #play.prop_blocks(arch, bin, callgraph)
+
   annotations.transform(arch, callgraph, bin)
 
-  import play
-  #play.stack_explore(arch, bin, callgraph)
-  play.prop_blocks(arch, bin, callgraph)
   
   k = callgraph.keys()
   k.sort()

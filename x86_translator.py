@@ -405,7 +405,7 @@ class X86_Translator:
       #absolute jump vs relative jump
       if 'rel' in operands[0][0]:
         IR += [ir.operation(self.DR("tval"),'=',self.DR("EIP"),"+",operands[0][1],'+',ir.constant_operand(size)),
-               ir.call(self.DR("tval"))
+               ir.call(self.DR("tval"), relative=True)
               ]
       else:
         IR += [ir.call(operands[0][1])]
@@ -630,7 +630,7 @@ class X86_Translator:
     IR = self.makeIR(instruction, sz+opsz, operands, TMEM_IR, OPmode, addr)
     #print sz+opsz, instruction['mnemonic'], operands,'\n-->', IR
     for y in IR:
-      y.address = int("%d"%int(addr & 0xffffffff))
+      y.address = int(addr & 0xffffffff)
       y.wordsize = self.mode/8
       
     return sz + opsz + len(prefixbytes), IR

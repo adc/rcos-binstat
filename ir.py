@@ -234,8 +234,11 @@ class math_operand(operand):
     operand.__init__(self, "math")
     self.value = op
   
-  def __repr__(self):
+  def __str__(self):
     return str(self.value)
+    
+  def __repr__(self):
+    return str(self)
   
   def __cmp__(a, b):
     return a.value != b.value
@@ -252,12 +255,13 @@ INST_MISC = 3
 
 class instruction:
   def __init__(self, t):
-    self.size = 0
+    self.size = 0 #size in disassembly
     self.type = t
     self.address = 0
+    self.wordsize = 0     
     self.operands = []
-    self.result = [] #changes made to state by instructions, these are described by math
     self.annotation = ""
+
 
 class operation(instruction):
   def __init__(self,*ops,**vals):
@@ -358,19 +362,14 @@ class branch_true(instruction):
       return "BRANCH loc_"+hex(self.dest.value)+"     "+self.annotation
 
 #######function abstractions
-#build an activation record
-class call(instruction):
-  def __init__(self, op, relative=1):
+class call(jump):
+  def __init__(self, op, relative=False):
+    jump.__init__(self, op, relative)
     instruction.__init__(self, "call")
-    self.dest = op
-    self.relative = relative
 
   def __repr__(self):
     if isinstance(self.dest, constant_operand):
-      if self.relative:
-        return "CALLR loc_"+hex(int(repr(self.dest))+int(repr(self.address)))+"     "+self.annotation
-      else:
-        return "CALL loc_"+hex(self.dest.value)+"     "+self.annotation
+        return "CALL loc_"+hex(self.get_dest())+"     "+self.annotation
     else:
       return "CALL %s"%self.dest+"     "+self.annotation
 
@@ -391,7 +390,7 @@ class ret(instruction):
   def __repr__(self):
     return "RET"+"     "+self.annotation
 ##########################
-#heap abstractions
+#heap abstractions -unused
 
 class allocate_heap(instruction):
   def __init__(self, size):
@@ -401,7 +400,7 @@ class free_heap(instruction):
   def __init__(self, size):
     instruction.__init__(self, "free_heap")
 
-#stack abstractions
+#stack abstractions -unused
 class allocate_stack(instruction):
   def __init__(self, size):
     instruction.__init__(self, "alloc_stack")
