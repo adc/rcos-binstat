@@ -5,12 +5,12 @@ import ssa
 import util
 
 
-def libcall_transform(arch, ssa_vals, instr):
+def libcall_transform(arch, ssa_vals, instr, aux_loc):
   if instr.dest.type == 'register':
-    src_addrs = ssa_vals[str(instr.dest.register_name)].get_values(instr.address)
+    src_addrs = ssa_vals[str(instr.dest.register_name)].get_values(instr.address, aux_loc)
   else:
     src_addrs = [instr.get_dest()]
-  
+
   for src_addr in src_addrs:
     if isinstance(src_addr,int):
       addr = src_addr
@@ -37,23 +37,18 @@ def transform(arch, callgraph, bin):
   for func in sg:
     for block in callgraph[func]:
       for instr in block.code:
+        aux_loc = block.code.index(instr)
+        
         if instr.type == 'operation':
           #check for stack assignment operation
           if len(instr.ops) > 2:
             if instr.ops[1] == '=':
               reg_name = str(instr.ops[0].register_name)
               if reg_name in block.ssa_vals:
-                value = ssa.translate_ops(block.ssa_vals, instr.ops[2:], instr.address)
-                if isinstance(value, ssa.ssa_state):
-                  values = value.eval()
-                else:
-                  values = [value]
-                
-                #values = block.ssa_vals[reg_name].get_values(instr.address)
-                if isinstance(value, ssa.ssa_state):
-                  instr.annotation = '            '+str(value)
-                else:
-                  instr.annotation = '            '+str(value)
+
+                #here we look at addr+1 because we're interested in the result after
+                # this instruction
+                values = block.ssa_vals[reg_name].get_states(instr.address, aux_loc+1)
                 out = ""
                 for value in values:
                   if isinstance(value, int):
@@ -61,11 +56,25 @@ def transform(arch, callgraph, bin):
                       data = util.pull_ascii(bin.memory, value)
                       if len(data) > 1:
                         out +=  ' @@@@@  ' + `data` + '\n'
-                        
-                instr.annotation += out
+                  else:
+                    n = []
+                    for v in values:
+                      #dont print out if unresolved remain
+                      if isinstance(v, ssa.ssa_state):
+                        if None not in v.eval():
+                          n += ['{'+",".join(str(x) for x in v.eval())+'}']
+                        else:
+                          n += [str(v)]
+                      else:
+                        n += [str(v)]
+                    out += str(n)
+                #instr.annotation += " "*20 + out
                       
         elif instr.type == 'load':
-          src_addrs = block.ssa_vals[str(instr.src.register_name)].get_values(instr.address)
+          src_addrs = block.ssa_vals[str(instr.src.register_name)].get_values(instr.address, aux_loc)
+          if None in src_addrs:
+            src_addrs = block.ssa_vals[str(instr.src.register_name)].get_states(instr.address, aux_loc)
+          
           for src_addr in src_addrs:
             if isinstance(src_addr,int):
               addr = src_addr
@@ -79,23 +88,31 @@ def transform(arch, callgraph, bin):
                   if len(data) > 1:
                     value = data
                 instr.annotation = "%%%% (%s) <- addr_%x"%(value,addr)
+                
+            
         elif instr.type == 'store':
+
           if instr.src.type == 'register':
-            src_addrs = block.ssa_vals[str(instr.src.register.register_name)].get_values(instr.address)
+            src_name = str(instr.src.register.register_name)
+            src_addrs = block.ssa_vals[src_name].get_values(instr.address, aux_loc)
+            if None in src_addrs:
+              src_addrs = block.ssa_vals[src_name].get_states(instr.address, aux_loc) 
           else:
             src_addrs = [instr.src.value]
 
           if instr.dest.type == 'register':
-            dest_addrs = block.ssa_vals[str(instr.dest.register.register_name)].get_values(instr.address)
+            dest_addrs = block.ssa_vals[str(instr.dest.register.register_name)].get_values(instr.address, aux_loc)
+            if None in dest_addrs:
+              dest_addrs = block.ssa_vals[str(instr.dest.register.register_name)].get_states(instr.address, aux_loc) 
           else:
             dest_addrs = [instr.dest.value]
           
           o = ""
           for src_addr in src_addrs:
             for dest_addr in dest_addrs:
-              o += " %s -> %s OR\n"%(src_addr, dest_addr)
+              o += " "*20 + " %s -> %s OR\n"%(src_addr, dest_addr)
           o = o[:-3]
           instr.annotation = o
 
         elif instr.type == 'call' or instr.type == 'jump':
-          libcall_transform(arch, block.ssa_vals, instr)
+          libcall_transform(arch, block.ssa_vals, instr, aux_loc)

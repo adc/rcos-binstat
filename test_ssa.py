@@ -138,7 +138,7 @@ works = True
 
 #10: esp = esp + 4
 state = ssa.translate_ops(symdict, expression[2:], 5)
-if str(state) != "((((undefined_esp))+4))":
+if str(state) != "(((undefined_esp)+4))":
   works = False
   print "translate_ops produced incorrect state :("
   print str(state)
@@ -152,7 +152,8 @@ state = ssa.translate_ops(symdict, expression[2:], 30)
 SYMs.update([state], 30)
 string_ = "".join([str(x) for x in SYMs.get_states()])
 
-if string_ != "((((undefined_esp))+4+4+4))":
+
+if string_ != "(((((undefined_esp)+4)+4)+4))":
   works = False
   print "consecutive translate_ops produced incorrect state :("
   print string_
@@ -171,7 +172,7 @@ vals = SYMs.get_values()
 
 if len(vals) != 1 or vals[0] != 112:
   works = False
-  print "GOT wrong value or length, expected 112, got",vals
+  print "GOT wrong value or length, expected 112, got",vals, SYMs.get_states()
 if works:
   print "[+] Everything seems to work"
 

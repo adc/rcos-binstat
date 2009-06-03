@@ -70,12 +70,12 @@ class ssa_symbol:
       #get most recent
       return self.values[self._last_address]
 
+    ######XXX careful w/ off by ones here.
     for (entry_addr, entry_aux_loc) in self.__vals_by_addr():
-      if address > entry_addr:
-        if address == entry_addr and aux_loc < entry_aux_loc: 
+      if address >= entry_addr:
+        if address == entry_addr and aux_loc <= entry_aux_loc: 
           continue
 
-        #print "VALZ=",self.values[(entry_addr, entry_aux_loc)]
         return self.values[(entry_addr, entry_aux_loc)]
 
     raise Exception("shouldn't reach here since every symbol at least has the undefined entry...")
@@ -92,6 +92,10 @@ class ssa_symbol:
       for state in states:
         if state not in entry:
           entry.append(state)
+          for n in entry:
+            #remove undefined if its there
+            if isinstance(n, undefined_value):
+              entry.remove(n)
     else:
       self.values[(address, aux_loc)] = states
       if (address, aux_loc) > self._last_address:
@@ -130,25 +134,25 @@ class ssa_state:
             #if isinstance(v, list):
             #  #for n in v:
             if isinstance(v, ssa_state):
-              new_ += [ret + x for x in v.eval_helper()]
+              new_ += ['%s'%(ret + x) for x in v.eval_helper()]
             else:
-              new_.append( rets[i] + '(%s)'%v)
+              new_.append( rets[i] + '%s'%v)
           if isinstance(vals[0], ssa_state):
             new_strings = vals[0].eval_helper()
             new_ += [rets[i] + x for x in new_strings[1:]]
             rets[i] += new_strings[0]
           else:
-            rets[i] += '(%s)'%str(vals[0])
+            rets[i] += str(vals[0])
         rets += new_
 
       else:
         for i in range(len(rets)):
-          rets[i] += str(e)
+          rets[i] +=str(e)
 
-    return rets
+    return ['(%s)'%x for x in rets]
   
   def __repr__(self):
-    return '(%s)'%', '.join("(%s)"%x for x in self.eval_helper()) 
+    return '%s'%', '.join("(%s)"%x for x in self.eval_helper()) 
     
   def eval(self):
     #print "\nasked to eval ourself @ %d:%d...\n"%(self.address, self.aux_loc)
@@ -160,7 +164,7 @@ class ssa_state:
         values.append( eval(string) )
       except:
         #TODO:: mark failure
-        pass
+        values.append(None)
     return values
     
 def translate_ops(SYMS, ops, address, aux_loc=0):
@@ -221,7 +225,9 @@ def propagate_intra_block_values(arch, callgraph, bin):
       for instr in block.code:
         #print hex(instr.address)
         addr_value = ir.constant_operand(instr.address, pc_reg.size)
-        ssa_track[str(pc_reg.register_name)].update([addr_value], instr.address)
+        ### subtract 1 from the update value, this means that _after_ this address
+        #### the value is x. does not include at that address
+        ssa_track[str(pc_reg.register_name)].update([addr_value], instr.address-1)
 
         if instr.type == 'operation':
           if len(instr.ops) > 2:
@@ -241,9 +247,13 @@ def propagate_intra_block_values(arch, callgraph, bin):
 
                 ssa_track[reg_name].update([value], instr.address, block.code.index(instr))
                 #                           reg_op.bitmin, reg_op.bitmax)
+                
+                #if instr.address == 0x804832c:
+                #  print "HI", ssa_track[reg_name].get_values(instr.address+1)
 
         elif instr.type == 'load':
           #update on load
+          #print hex(instr.address), instr, '_addrs',ssa_track[str(instr.src.register_name)].get_values()
           for src_addr in ssa_track[str(instr.src.register_name)].get_values():
             value = address_value(src_addr, 0, instr.src.size*8)
 
@@ -261,10 +271,12 @@ def propagate_intra_block_values(arch, callgraph, bin):
               #                           reg_op.bitmin, reg_op.bitmax)
 
         elif instr.type == "store":
+          #print hex(instr.address), instr
           #memory destination...
           pass
         elif instr.type == "call":
           #invalidate registers based on calling conventions.
+          #print hex(instr.address), instr
           for x in arch.call_clobber:
             reg_name = str(x.register_name)
             ssa_track[reg_name].update([undefined_value(reg_name)],
