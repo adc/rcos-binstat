@@ -8,7 +8,6 @@ import util
 def libcall_transform(arch, ssa_vals, instr):
   if instr.dest.type == 'register':
     src_addrs = ssa_vals[str(instr.dest.register_name)].get_values(instr.address)
-    src_addrs = [x.eval() for x in src_addrs]
   else:
     src_addrs = [instr.get_dest()]
   
@@ -44,12 +43,19 @@ def transform(arch, callgraph, bin):
             if instr.ops[1] == '=':
               reg_name = str(instr.ops[0].register_name)
               if reg_name in block.ssa_vals:
-                #value = ssa.resolve_ssa(block.ssa_vals, instr.ops[2:], instr.address-1)
-                values = block.ssa_vals[reg_name].get_values(instr.address)
-                instr.annotation = '            '+repr(values)
+                value = ssa.translate_ops(block.ssa_vals, instr.ops[2:], instr.address)
+                if isinstance(value, ssa.ssa_state):
+                  values = value.eval()
+                else:
+                  values = [value]
+                
+                #values = block.ssa_vals[reg_name].get_values(instr.address)
+                if isinstance(value, ssa.ssa_state):
+                  instr.annotation = '            '+str(value)
+                else:
+                  instr.annotation = '            '+str(value)
                 out = ""
                 for value in values:
-                  value = value.get()
                   if isinstance(value, int):
                     if value in bin.memory:
                       data = util.pull_ascii(bin.memory, value)
@@ -60,7 +66,6 @@ def transform(arch, callgraph, bin):
                       
         elif instr.type == 'load':
           src_addrs = block.ssa_vals[str(instr.src.register_name)].get_values(instr.address)
-          src_addrs = [x.eval() for x in src_addrs]
           for src_addr in src_addrs:
             if isinstance(src_addr,int):
               addr = src_addr
@@ -77,13 +82,11 @@ def transform(arch, callgraph, bin):
         elif instr.type == 'store':
           if instr.src.type == 'register':
             src_addrs = block.ssa_vals[str(instr.src.register.register_name)].get_values(instr.address)
-            src_addrs = [x.eval() for x in src_addrs]
           else:
             src_addrs = [instr.src.value]
 
           if instr.dest.type == 'register':
             dest_addrs = block.ssa_vals[str(instr.dest.register.register_name)].get_values(instr.address)
-            dest_addrs = [x.eval() for x in dest_addrs]
           else:
             dest_addrs = [instr.dest.value]
           
