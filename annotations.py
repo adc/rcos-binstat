@@ -68,7 +68,7 @@ def transform(arch, callgraph, bin):
                       else:
                         n += [str(v)]
                     out += str(n)
-                #instr.annotation += " "*20 + out
+                instr.annotation += " "*20 + out
                       
         elif instr.type == 'load':
           src_addrs = block.ssa_vals[str(instr.src.register_name)].get_values(instr.address, aux_loc)
