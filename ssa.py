@@ -66,6 +66,7 @@ class ssa_symbol:
 
   def get_states(self, address=None, aux_loc=0):
     """returns a list of possible states for a variable"""
+
     if not address:
       #get most recent
       return self.values[self._last_address]
@@ -73,10 +74,11 @@ class ssa_symbol:
     ######XXX careful w/ off by ones here.
     for (entry_addr, entry_aux_loc) in self.__vals_by_addr():
       if address >= entry_addr:
-        if address == entry_addr and aux_loc <= entry_aux_loc: 
+        #if
+        if address == entry_addr and entry_aux_loc >= aux_loc: 
           continue
-
-        return self.values[(entry_addr, entry_aux_loc)]
+        ret = self.values[(entry_addr, entry_aux_loc)]
+        return ret
 
     raise Exception("shouldn't reach here since every symbol at least has the undefined entry...")
     return []
@@ -101,6 +103,7 @@ class ssa_symbol:
       if (address, aux_loc) > self._last_address:
         self._last_address = (address, aux_loc)
 
+        
   def clear(self, address, aux_loc = 0):
     """clear a symbol after an address, setting it back to undefined"""
     #print 'updating %s @ %d:%d  w/ %s'%(self.name, address,aux_loc,str(states))
@@ -116,9 +119,8 @@ class ssa_state:
     """docstring for __init__"""
     self.address, self.aux_loc = address, aux_loc
     #TODO self.bitmin, self.bitmax = bitmin, bitmax
-
     self.expression = []
-
+  
   def eval_helper(self):
     """returns a list of possibilities to be eval'd
       Here be dragons :("""
@@ -134,10 +136,12 @@ class ssa_state:
             #if isinstance(v, list):
             #  #for n in v:
             if isinstance(v, ssa_state):
-              new_ += ['%s'%(ret + x) for x in v.eval_helper()]
+              new_ += ['%s'%(rets[i] + x) for x in v.eval_helper()]
             else:
               new_.append( rets[i] + '%s'%v)
           if isinstance(vals[0], ssa_state):
+            if vals[0] == self:
+              raise Exception("CIRCULAR REFERENCE WAS CREATED <%x:%d>"%(self.address, self.aux_loc))
             new_strings = vals[0].eval_helper()
             new_ += [rets[i] + x for x in new_strings[1:]]
             rets[i] += new_strings[0]
@@ -221,9 +225,9 @@ def propagate_intra_block_values(arch, callgraph, bin):
                                                     r.bitmin, r.bitmax)
       for reg in constant_regs:
         ssa_track[str(reg.register_name)].update([constant_regs[reg]], 0)
-
+      
+      aux_loc = 0
       for instr in block.code:
-        #print hex(instr.address)
         addr_value = ir.constant_operand(instr.address, pc_reg.size)
         ### subtract 1 from the update value, this means that _after_ this address
         #### the value is x. does not include at that address
@@ -239,21 +243,17 @@ def propagate_intra_block_values(arch, callgraph, bin):
                 print "HUH? write to pc reg???"
               else:
                 reg_op = instr.ops[0]
-                value = translate_ops(ssa_track, instr.ops[2:], instr.address)
+                value = translate_ops(ssa_track, instr.ops[2:], instr.address, aux_loc)
 
                 reg_name = reg_op.register.register_name
                 
-                #print hex(instr.address), instr, value
-
-                ssa_track[reg_name].update([value], instr.address, block.code.index(instr))
+                ssa_track[reg_name].update([value], instr.address, aux_loc)
                 #                           reg_op.bitmin, reg_op.bitmax)
                 
-                #if instr.address == 0x804832c:
-                #  print "HI", ssa_track[reg_name].get_values(instr.address+1)
 
         elif instr.type == 'load':
           #update on load
-          #print hex(instr.address), instr, '_addrs',ssa_track[str(instr.src.register_name)].get_values()
+
           for src_addr in ssa_track[str(instr.src.register_name)].get_values():
             value = address_value(src_addr, 0, instr.src.size*8)
 
@@ -271,18 +271,15 @@ def propagate_intra_block_values(arch, callgraph, bin):
               #                           reg_op.bitmin, reg_op.bitmax)
 
         elif instr.type == "store":
-          #print hex(instr.address), instr
-          #memory destination...
           pass
         elif instr.type == "call":
           #invalidate registers based on calling conventions.
-          #print hex(instr.address), instr
           for x in arch.call_clobber:
             reg_name = str(x.register_name)
             ssa_track[reg_name].update([undefined_value(reg_name)],
                                       instr.address,block.code.index(instr)
                                       )
-
+        aux_loc += 1
       block.ssa_vals = ssa_track
 
   

@@ -357,17 +357,3 @@ def make_flow_graph(code):
     graph_function(f[func])
     print "===== \n\n\n"
   
-
-"""
-  for n in code:
-    if isinstance(n, ir.jump):
-      print "0x%x:    "%n.address,n
-    elif isinstance(n, ir.call):
-      if isinstance(ir.dest, ir.constant_operand):
-        call_dests.append( ir.constant_operand.value )
-      print "0x%x:    "%n.address,n
-    elif isinstance(n, ir.branch_true):
-      print "0x%x:    "%n.address,n
-    elif isinstance(n, ir.ret):
-      print "0x%x:    "%n.address,n    
-  """
