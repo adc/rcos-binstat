@@ -20,18 +20,20 @@ def propagate_ssa_values(source, dest):
     #note that the states still refernce the original symbols
     #TODO: depth...
     states = []
+
     for r in reference:
       if isinstance(r, ssa.ssa_state):
         n = r.copy()
         states.append(n)
       else:
         states.append(r)
-    
+
+    #print '>'
     addr = dest.start
     aux = -1
     
     dest.ssa_vals[symbol].update(states, addr, aux)
-      
+    #print '<'
 
     
 def prop_blocks(arch, bin, callgraph):
@@ -51,7 +53,7 @@ def prop_blocks(arch, bin, callgraph):
   for func in sg:
     print "\n>>>>>>> func 0x%x <<<<<<<<"%func
 
-    #top down value propagation, does not do loops for now (LOL  = loops orgasm lol)
+    #top down value propagation, does not do loops for now !!!!
     for block in callgraph[func]:
       if block.start in visited:
         continue

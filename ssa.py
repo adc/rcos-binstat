@@ -68,9 +68,12 @@ class ssa_symbol:
   def get_states(self, address=None, aux_loc=0):
     """returns a list of possible states for a variable"""
 
+    
     if not address:
       #get most recent
       return self.values[self._last_address]
+
+    #print "GET %x:%d"%(address,aux_loc)
 
     ######XXX careful w/ off by ones here.
     for (entry_addr, entry_aux_loc) in self.__vals_by_addr():
@@ -78,6 +81,7 @@ class ssa_symbol:
         #if
         if address == entry_addr and entry_aux_loc >= aux_loc: 
           continue
+        #print "GOT %x:%d"%(entry_addr, entry_aux_loc)
         ret = self.values[(entry_addr, entry_aux_loc)]
         return ret
 
@@ -87,7 +91,7 @@ class ssa_symbol:
     
   def update(self, states, address, aux_loc = 0):
     """update sets a new value for a variable after address"""
-    #print 'updating %s @ %d:%d  w/ %s'%(self.name, address,aux_loc,str(states))
+    #print 'updating %s @ %x:%d  w/ %s'%(self.name, address,aux_loc,str(states))
 
     if (address, aux_loc) in self.values:
       #check if an additional state needs to be added
@@ -103,7 +107,6 @@ class ssa_symbol:
       self.values[(address, aux_loc)] = states
       if (address, aux_loc) > self._last_address:
         self._last_address = (address, aux_loc)
-
         
   def clear(self, address, aux_loc = 0):
     """clear a symbol after an address, setting it back to undefined"""
@@ -117,10 +120,17 @@ class ssa_symbol:
 
 class ssa_state:
   def __init__(self, address, aux_loc):
-    """docstring for __init__"""
     self.address, self.aux_loc = address, aux_loc
     #TODO self.bitmin, self.bitmax = bitmin, bitmax
     self.expression = []
+  
+  def __cmp__(self, b):
+    #print 'cmp called on %x:%d'%(self.address,self.aux_loc)
+    #return 1
+    if isinstance(b, ssa_state):
+      if self.expression == b.expression:
+        return 0
+    return 1
   
   def eval_helper(self):
     """returns a list of possibilities to be eval'd
@@ -130,6 +140,10 @@ class ssa_state:
     for e in self.expression:
       if isinstance(e, ssa_symbol):
         vals = e.get_states(self.address, self.aux_loc)          
+        if id(self) in [id(x) for x in vals]:
+          print e, e.name
+          q = vals.index(self)
+          raise Exception("RECURSIVE REFERENCE. the state at <%x:%d> has symbols which references itself <%x:%d>"%(self.address, self.aux_loc, vals[vals.index(self)].address, vals[vals.index(self)].aux_loc ))
         #TODO::: mark that there are unresolved states...\n
         new_ = []
         for i in range(len(rets)):
@@ -141,8 +155,6 @@ class ssa_state:
             else:
               new_.append( rets[i] + '%s'%v)
           if isinstance(vals[0], ssa_state):
-            if vals[0] == self:
-              raise Exception("CIRCULAR REFERENCE WAS CREATED <%x:%d>"%(self.address, self.aux_loc))
             new_strings = vals[0].eval_helper()
             new_ += [rets[i] + x for x in new_strings[1:]]
             rets[i] += new_strings[0]
@@ -183,7 +195,7 @@ def translate_ops(SYMS, ops, address, aux_loc=0):
   """returns a state or primitive representing an operation"""
   symbolic = False
 
-  ret = ssa_state(address, aux_loc)
+  ret = ssa_state(address, aux_loc+1)
   curstr = ""
   
   for op in ops:
@@ -237,9 +249,9 @@ def propagate_intra_block_values(arch, callgraph, bin):
       aux_loc = 0
       for instr in block.code:
         addr_value = ir.constant_operand(instr.address, pc_reg.size)
-        ### subtract 1 from the update value, this means that _after_ this address
-        #### the value is x. does not include at that address
-        ssa_track[str(pc_reg.register_name)].update([addr_value], instr.address-1)
+        ### use -1 as aux_loc, this means that at 0 onwards 
+        #### the value is x.
+        ssa_track[str(pc_reg.register_name)].update([addr_value], instr.address, -1)
 
         if instr.type == 'operation':
           if len(instr.ops) > 2:
@@ -254,10 +266,9 @@ def propagate_intra_block_values(arch, callgraph, bin):
                 value = translate_ops(ssa_track, instr.ops[2:], instr.address, aux_loc)
 
                 reg_name = reg_op.register.register_name
-                
-                ssa_track[reg_name].update([value], instr.address, aux_loc)
+                #aux_loc + 1 since it will be valid __after this assignment
+                ssa_track[reg_name].update([value], instr.address, aux_loc+1)
                 #                           reg_op.bitmin, reg_op.bitmax)
-                
 
         elif instr.type == 'load':
           #update on load

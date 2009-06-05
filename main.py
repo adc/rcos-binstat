@@ -148,13 +148,13 @@ if __name__ == "__main__":
   #play.stack_explore(arch, bin, callgraph)
   play.prop_blocks(arch, bin, callgraph)
 
-  annotations.transform(arch, callgraph, bin)
+  #annotations.transform(arch, callgraph, bin)
 
   
-  k = callgraph.keys()
-  k.sort()
-  for func in k:
-    print "====== func %x ====="%func
-    graphs.graph_function(f[func])
-    print "===== \n\n\n"
+  #k = callgraph.keys()
+  #k.sort()
+  #for func in k:
+  #  print "====== func %x ====="%func
+  #  graphs.graph_function(f[func])
+  #  print "===== \n\n\n"
 
