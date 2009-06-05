@@ -13,6 +13,7 @@ class undefined_value:
   def __init__(self, name):
     """docstring for __init__"""
     self.name = name
+    self.type = 'undefined_value'
   
   def __str__(self):
     return self.__repr__()
@@ -170,6 +171,13 @@ class ssa_state:
         #TODO:: mark failure
         values.append(None)
     return values
+
+  def copy(self):
+    """Return a new instance of this state"""
+    n = ssa_state(self.address, self.aux_loc)
+    n.expression = self.expression
+    return n
+    
     
 def translate_ops(SYMS, ops, address, aux_loc=0):
   """returns a state or primitive representing an operation"""
@@ -253,8 +261,8 @@ def propagate_intra_block_values(arch, callgraph, bin):
 
         elif instr.type == 'load':
           #update on load
-
-          for src_addr in ssa_track[str(instr.src.register_name)].get_values():
+          src_addrs = ssa_track[str(instr.src.register_name)].get_states()
+          for src_addr in src_addrs:
             value = address_value(src_addr, 0, instr.src.size*8)
 
             if isinstance(src_addr, int):

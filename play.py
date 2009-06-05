@@ -12,7 +12,7 @@ def get_block(callgraph, address):
 def propagate_ssa_values(source, dest):
   print "-- propagate %x to %x --"%(source.start, dest.start)
 
-  for symbol in ['ebx']:#ource.ssa_vals:
+  for symbol in source.ssa_vals:
     #propagate each possible value to the dest node
     reference = source.ssa_vals[symbol].get_states(source.end+1) #returns last 
     
@@ -22,8 +22,7 @@ def propagate_ssa_values(source, dest):
     states = []
     for r in reference:
       if isinstance(r, ssa.ssa_state):
-        n = ssa.ssa_state(dest.start, -1)
-        n.expression = r.expression
+        n = r.copy()
         states.append(n)
       else:
         states.append(r)

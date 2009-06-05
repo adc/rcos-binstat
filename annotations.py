@@ -88,6 +88,8 @@ def transform(arch, callgraph, bin):
                   if len(data) > 1:
                     value = data
                 instr.annotation = "%%%% (%s) <- addr_%x"%(value,addr)
+            else:
+              instr.annotation = " "*10+"%s <- addr_[%s]"%(instr.dest, src_addr)
                 
             
         elif instr.type == 'store':
